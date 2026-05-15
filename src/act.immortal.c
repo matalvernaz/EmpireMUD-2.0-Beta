@@ -8877,9 +8877,96 @@ ACMD(do_godmode) {
 }
 
 
+// List every character that has ever been created. Iterates the in-memory
+// player_table_by_name (populated at boot), so no disk reads. Optional
+// argument is a case-insensitive substring filter; matches against name,
+// account id, or last_host.
+ACMD(do_playerlist) {
+	extern player_index_data *player_table_by_name;
+	player_index_data *plr, *next_plr;
+	struct time_info_data played_time;
+	char filter[MAX_INPUT_LENGTH], lname[MAX_NAME_LENGTH * 2], lhost[256];
+	char account_str[16], created_buf[32], played_buf[32];
+	char *time_since;
+	int count = 0, total = 0, iter;
+	bool has_filter, matched;
+	struct tm *tm_buf;
+
+	one_argument(argument, filter);
+	has_filter = (*filter != '\0');
+	if (has_filter) {
+		for (iter = 0; filter[iter]; ++iter) {
+			filter[iter] = LOWER(filter[iter]);
+		}
+	}
+
+	if (has_filter) {
+		msg_to_char(ch, "Players matching '%s':\r\n", filter);
+	}
+	else {
+		msg_to_char(ch, "All known players:\r\n");
+	}
+
+	HASH_ITER(name_hh, player_table_by_name, plr, next_plr) {
+		++total;
+
+		if (has_filter) {
+			matched = FALSE;
+			// name
+			for (iter = 0; plr->name && plr->name[iter] && iter < (int)sizeof(lname) - 1; ++iter) {
+				lname[iter] = LOWER(plr->name[iter]);
+			}
+			lname[iter] = '\0';
+			if (strstr(lname, filter)) matched = TRUE;
+			// account id (stringified)
+			if (!matched) {
+				snprintf(account_str, sizeof(account_str), "%d", plr->account_id);
+				if (strstr(account_str, filter)) matched = TRUE;
+			}
+			// last_host
+			if (!matched && plr->last_host) {
+				for (iter = 0; plr->last_host[iter] && iter < (int)sizeof(lhost) - 1; ++iter) {
+					lhost[iter] = LOWER(plr->last_host[iter]);
+				}
+				lhost[iter] = '\0';
+				if (strstr(lhost, filter)) matched = TRUE;
+			}
+			if (!matched) continue;
+		}
+
+		++count;
+
+		tm_buf = localtime(&plr->birth);
+		strftime(created_buf, sizeof(created_buf), "%Y-%m-%d", tm_buf);
+		played_time = *real_time_passed(plr->played, 0);
+		snprintf(played_buf, sizeof(played_buf), "%dd %dh", played_time.day, played_time.hours);
+		time_since = simple_time_since(plr->last_logon);
+		skip_spaces(&time_since);
+
+		msg_to_char(ch, "  %s (id %d, account %d, level %d) -- created %s, last %s ago, played %s%s%s\r\n",
+			plr->name ? plr->name : "?",
+			plr->idnum,
+			plr->account_id,
+			plr->access_level,
+			created_buf,
+			time_since,
+			played_buf,
+			plr->last_host ? ", host " : "",
+			plr->last_host ? plr->last_host : "");
+	}
+
+	if (has_filter) {
+		msg_to_char(ch, "%d of %d player%s matched.\r\n", count, total, total == 1 ? "" : "s");
+	}
+	else {
+		msg_to_char(ch, "%d player%s total.\r\n", total, total == 1 ? "" : "s");
+	}
+}
+
+
 ACMD(do_unbind) {
 	obj_data *obj;
-	
+
 	one_argument(argument, arg);
 
 	if (!*arg) {

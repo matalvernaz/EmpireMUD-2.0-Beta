@@ -274,6 +274,7 @@ ACMD(do_pickpocket);
 ACMD(do_plant);
 ACMD(do_play);
 ACMD(do_playerdelete);
+ACMD(do_playerlist);
 ACMD(do_pledge);
 ACMD(do_point);
 ACMD(do_poofset);
@@ -820,6 +821,8 @@ cpp_extern const struct command_info cmd_info[] = {
 	STANDARD_CMD( "pilot", POS_SITTING, do_drive, NO_MIN, NO_GRANTS, SCMD_PILOT, CTYPE_MOVE, CMD_NO_ANIMALS, NO_ABIL ),
 	STANDARD_CMD( "play", POS_STANDING, do_play, NO_MIN, NO_GRANTS, NO_SCMD, CTYPE_MOVE, CMD_NO_ANIMALS, NO_ABIL ),
 	STANDARD_CMD( "playerdelete", POS_SLEEPING, do_playerdelete, LVL_CIMPL, GRANT_PLAYERDELETE, NO_SCMD, CTYPE_IMMORTAL, CMD_NO_ABBREV, NO_ABIL ),
+	STANDARD_CMD( "playerlist", POS_DEAD, do_playerlist, LVL_START_IMM, NO_GRANTS, NO_SCMD, CTYPE_IMMORTAL, CMD_NO_ABBREV, NO_ABIL ),
+	STANDARD_CMD( "plist", POS_DEAD, do_playerlist, LVL_START_IMM, NO_GRANTS, NO_SCMD, CTYPE_IMMORTAL, CMD_NO_ABBREV, NO_ABIL ),
 	STANDARD_CMD( "plant", POS_STANDING, do_plant, NO_MIN, NO_GRANTS, NO_SCMD, CTYPE_BUILD, CMD_NO_ANIMALS, NO_ABIL ),
 	SIMPLE_CMD( "pledge", POS_SLEEPING, do_pledge, NO_MIN, CTYPE_EMPIRE ),
 	SIMPLE_CMD( "point", POS_RESTING, do_point, NO_MIN, CTYPE_UTIL ),
