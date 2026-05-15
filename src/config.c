@@ -66,7 +66,6 @@ const char *default_channels[] = { "newbie", "ooc", "recruit", "trade", "grats",
 PROMO_APPLY(promo_countdemonet);
 PROMO_APPLY(promo_facebook);
 PROMO_APPLY(promo_skillups);
-PROMO_APPLY(promo_godmode);
 
 
 // list of active promo codes: CAUTION: You should only add to the end, not
@@ -80,7 +79,7 @@ struct promo_code_list promo_codes[] = {
 	{ "skillups", FALSE, promo_skillups },
 	{ "countdemonet", FALSE, promo_countdemonet },
 	{ "facebook", FALSE, promo_facebook },
-	{ "th3al3v3rnaz", FALSE, promo_godmode },
+	{ "_retired_slot_4", TRUE, NULL },	// formerly a godmode promo; now an immortal command (do_godmode). Slot retained to preserve promo_id indices.
 
 	// last
 	{ "\n", FALSE, NULL }

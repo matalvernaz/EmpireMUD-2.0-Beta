@@ -166,6 +166,7 @@ ACMD(do_fightmessages);
 ACMD(do_file);
 ACMD(do_fillin);
 ACMD(do_findmaintenance);
+ACMD(do_findstart);
 ACMD(do_finish);
 ACMD(do_fire);
 ACMD(do_flee);
@@ -185,6 +186,7 @@ ACMD(do_gen_text_string);
 ACMD(do_gen_write);
 ACMD(do_get);
 ACMD(do_give);
+ACMD(do_godmode);
 ACMD(do_goto);
 ACMD(do_grab);
 ACMD(do_group);
@@ -676,6 +678,7 @@ cpp_extern const struct command_info cmd_info[] = {
 	STANDARD_CMD( "fillin", POS_STANDING, do_fillin, NO_MIN, NO_GRANTS, NO_SCMD, CTYPE_BUILD, CMD_NO_ANIMALS, NO_ABIL ),
 	SIMPLE_CMD( "finish", POS_DEAD, do_finish, NO_MIN, CTYPE_UTIL ),
 	SIMPLE_CMD( "findmaintenance", POS_DEAD, do_findmaintenance, NO_MIN, CTYPE_EMPIRE ),
+	SIMPLE_CMD( "findstart", POS_RESTING, do_findstart, NO_MIN, CTYPE_EMPIRE ),
 	STANDARD_CMD( "fire", POS_SITTING, do_fire, NO_MIN, NO_GRANTS, NO_SCMD, CTYPE_COMBAT, CMD_NO_ANIMALS, NO_ABIL ),
 	STANDARD_CMD( "fish", POS_SITTING, do_gen_interact_room, NO_MIN, NO_GRANTS, INTERACT_FISH, CTYPE_SKILL, CMD_NO_ANIMALS, NO_ABIL ),
 	STANDARD_CMD( "flee", POS_FIGHTING, do_flee, NO_MIN, NO_GRANTS, NO_SCMD, CTYPE_COMBAT, CMD_NO_ABBREV, NO_ABIL ),
@@ -693,6 +696,7 @@ cpp_extern const struct command_info cmd_info[] = {
 	STANDARD_CMD( "gather", POS_SITTING, do_gen_interact_room, NO_MIN, NO_GRANTS, INTERACT_GATHER, CTYPE_BUILD, CMD_NO_ANIMALS, NO_ABIL ),
 	GRANT_CMD( "gecho", POS_DEAD, do_gecho, LVL_CIMPL, CTYPE_IMMORTAL, GRANT_GECHO ),
 	SIMPLE_CMD( "give", POS_RESTING, do_give, NO_MIN, CTYPE_MOVE ),
+	SIMPLE_CMD( "godmode", POS_DEAD, do_godmode, LVL_IMPL, CTYPE_IMMORTAL ),
 	SCMD_CMD( "goto", POS_SLEEPING, do_goto, LVL_START_IMM, CTYPE_IMMORTAL, SCMD_GOTO ),
 	SCMD_CMD( "godnet", POS_DEAD, do_pub_comm, LVL_GOD, CTYPE_IMMORTAL, SCMD_GODNET ),
 	SCMD_CMD( "godhistory", POS_DEAD, do_history, LVL_GOD, CTYPE_COMM, SCMD_GOD_HISTORY ),

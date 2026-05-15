@@ -8599,14 +8599,44 @@ ACMD(do_trans) {
 }
 
 
-// Teleport a player (or self) to a good unclaimed starting location for an empire.
-// Criteria: on the land_map, not claimed, not water, not adventure, not rough, not inside.
-ACMD(do_empirestart) {
+// Land-map sector flags that disqualify a tile as an empire starting location.
+#define EMPIRESTART_DISQUALIFYING_SECT_FLAGS \
+	(SECTF_NO_CLAIM | SECTF_FRESH_WATER | SECTF_OCEAN | SECTF_ADVENTURE | \
+	 SECTF_ROUGH | SECTF_MAP_BUILDING | SECTF_INSIDE | SECTF_NON_ISLAND)
+
+// Returns TRUE iff `map` is a good unclaimed empire starting tile:
+// on a real island, unowned, and not water/adventure/rough/inside/etc.
+static bool is_good_start_tile(struct map_data *map) {
+	if (ROOM_OWNER(real_room(map->vnum))) return FALSE;
+	if (SECT_FLAGGED(map->sector_type, EMPIRESTART_DISQUALIFYING_SECT_FLAGS)) return FALSE;
+	if (map->shared->island_id == NO_ISLAND) return FALSE;
+	return TRUE;
+}
+
+
+// Single-pass reservoir sample over the land_map. Returns NULL only if there
+// are zero eligible tiles in the entire world.
+static struct map_data *pick_random_start_tile(void) {
 	extern struct map_data *land_map;
-	struct map_data *map, *best = NULL;
+	struct map_data *map, *chosen = NULL;
+	int seen = 0;
+
+	for (map = land_map; map; map = map->next) {
+		if (!is_good_start_tile(map)) continue;
+		++seen;
+		if (number(1, seen) == 1) {
+			chosen = map;
+		}
+	}
+	return chosen;
+}
+
+
+// Teleport a player (or self) to a good unclaimed starting location for an empire.
+ACMD(do_empirestart) {
+	struct map_data *best;
 	char_data *victim = ch;
 	room_data *room, *was_in;
-	int tries = 0, rand_skip, total = 0;
 
 	one_argument(argument, arg);
 	if (*arg) {
@@ -8620,35 +8650,18 @@ ACMD(do_empirestart) {
 		}
 	}
 
-	// count eligible tiles
-	for (map = land_map; map; map = map->next) {
-		if (ROOM_OWNER(real_room(map->vnum))) continue;
-		if (SECT_FLAGGED(map->sector_type, SECTF_NO_CLAIM | SECTF_FRESH_WATER | SECTF_OCEAN | SECTF_ADVENTURE | SECTF_ROUGH | SECTF_MAP_BUILDING | SECTF_INSIDE | SECTF_NON_ISLAND)) continue;
-		if (map->shared->island_id == NO_ISLAND) continue;
-		++total;
-	}
-
-	if (total == 0) {
+	if (!(best = pick_random_start_tile())) {
 		msg_to_char(ch, "No suitable unclaimed starting location found.\r\n");
 		return;
 	}
-
-	// pick a random eligible tile
-	rand_skip = number(0, total - 1);
-	for (map = land_map; map && tries <= rand_skip; map = map->next) {
-		if (ROOM_OWNER(real_room(map->vnum))) continue;
-		if (SECT_FLAGGED(map->sector_type, SECTF_NO_CLAIM | SECTF_FRESH_WATER | SECTF_OCEAN | SECTF_ADVENTURE | SECTF_ROUGH | SECTF_MAP_BUILDING | SECTF_INSIDE | SECTF_NON_ISLAND)) continue;
-		if (map->shared->island_id == NO_ISLAND) continue;
-		best = map;
-		++tries;
-	}
-
-	if (!best || !(room = real_room(best->vnum))) {
+	if (!(room = real_room(best->vnum))) {
 		msg_to_char(ch, "Failed to find a valid room.\r\n");
 		return;
 	}
 
-	syslog(SYS_GC, GET_INVIS_LEV(ch), TRUE, "GC: %s sent %s to empire start location %d", GET_REAL_NAME(ch), GET_REAL_NAME(victim), best->vnum);
+	if (victim != ch) {
+		syslog(SYS_GC, GET_INVIS_LEV(ch), TRUE, "GC: %s sent %s to empire start location %d", GET_REAL_NAME(ch), GET_REAL_NAME(victim), best->vnum);
+	}
 
 	act("$n disappears in a swirl of light.", TRUE, victim, 0, 0, TO_ROOM);
 	was_in = IN_ROOM(victim);
@@ -8665,6 +8678,84 @@ ACMD(do_empirestart) {
 	greet_triggers(victim, NO_DIR, "empirestart", FALSE, was_in);
 	msdp_update_room(victim);
 	msg_to_char(ch, "Sent %s to a good empire starting location (tile %d).\r\n", GET_NAME(victim), best->vnum);
+}
+
+
+// Mortal advisor: describe a recommended unclaimed empire starting tile.
+// Doesn't teleport — just tells the player where a good fresh spot exists.
+ACMD(do_findstart) {
+	struct map_data *best;
+	room_data *room;
+
+	if (!(best = pick_random_start_tile())) {
+		msg_to_char(ch, "The world is unusually full — no fresh starting spots are available right now.\r\n");
+		return;
+	}
+	if (!(room = real_room(best->vnum))) {
+		msg_to_char(ch, "The location seems to slip away as you focus on it. Try again.\r\n");
+		return;
+	}
+
+	msg_to_char(ch, "A suitable fresh starting location:\r\n");
+	msg_to_char(ch, "  Coordinates: (%d, %d)\r\n", MAP_X_COORD(best->vnum), MAP_Y_COORD(best->vnum));
+	msg_to_char(ch, "  Island: %s\r\n", get_island_name_for(best->shared->island_id, ch));
+	msg_to_char(ch, "  Terrain: %s\r\n", GET_SECT_NAME(best->sector_type));
+	msg_to_char(ch, "Travel toward (%d, %d) to investigate, or run 'findstart' again for a different recommendation.\r\n", MAP_X_COORD(best->vnum), MAP_Y_COORD(best->vnum));
+}
+
+
+// Max out a character: attributes, all skills, bonus traits, and coins.
+// Used by do_godmode (immortal command). Previously reachable via a promo
+// code in early development — that backdoor is removed; this is admin-only now.
+static void apply_godmode(char_data *vict) {
+	skill_data *skill, *next_skill;
+	int iter;
+
+	for (iter = 0; iter < NUM_ATTRIBUTES; ++iter) {
+		vict->real_attributes[iter] = att_max(vict);
+	}
+	affect_total(vict);
+
+	HASH_ITER(hh, skill_table, skill, next_skill) {
+		set_skill(vict, SKILL_VNUM(skill), MAX_SKILL_CAP);
+	}
+
+	GET_BONUS_TRAITS(vict) = (bitvector_t)(BIT(NUM_BONUS_TRAITS) - 1);
+	increase_coins(vict, REAL_OTHER_COIN, 1000000);
+}
+
+
+// Immortal command: max out a character (self or specified victim).
+ACMD(do_godmode) {
+	char_data *victim = ch;
+
+	one_argument(argument, arg);
+	if (*arg) {
+		if (!(victim = get_char_vis(ch, arg, NULL, FIND_CHAR_WORLD))) {
+			msg_to_char(ch, "No player found by that name.\r\n");
+			return;
+		}
+		if (IS_NPC(victim)) {
+			msg_to_char(ch, "You can't godmode an NPC.\r\n");
+			return;
+		}
+		if (GET_ACCESS_LEVEL(ch) <= GET_ACCESS_LEVEL(victim) && ch != victim) {
+			msg_to_char(ch, "Maybe that's not such a great idea.\r\n");
+			return;
+		}
+	}
+
+	apply_godmode(victim);
+	SAVE_CHAR(victim);
+
+	if (victim != ch) {
+		msg_to_char(victim, "%s has bestowed godmode upon you. Your attributes, skills, and coins surge.\r\n", PERS(ch, victim, TRUE));
+		syslog(SYS_GC, GET_INVIS_LEV(ch), TRUE, "GC: %s godmoded %s", GET_REAL_NAME(ch), GET_REAL_NAME(victim));
+	}
+	else {
+		syslog(SYS_GC, GET_INVIS_LEV(ch), TRUE, "GC: %s godmoded self", GET_REAL_NAME(ch));
+	}
+	msg_to_char(ch, "Godmode applied to %s.\r\n", GET_NAME(victim));
 }
 
 

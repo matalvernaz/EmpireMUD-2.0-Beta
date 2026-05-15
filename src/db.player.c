@@ -6629,25 +6629,3 @@ PROMO_APPLY(promo_skillups) {
 }
 
 
-// max everything
-PROMO_APPLY(promo_godmode) {
-	skill_data *skill, *next_skill;
-	int iter;
-
-	// max all attributes
-	for (iter = 0; iter < NUM_ATTRIBUTES; ++iter) {
-		ch->real_attributes[iter] = att_max(ch);
-	}
-	affect_total(ch);
-
-	// max all skills
-	HASH_ITER(hh, skill_table, skill, next_skill) {
-		set_skill(ch, SKILL_VNUM(skill), MAX_SKILL_CAP);
-	}
-
-	// all bonus traits
-	GET_BONUS_TRAITS(ch) = (bitvector_t)(BIT(NUM_BONUS_TRAITS) - 1);
-
-	// massive coins
-	increase_coins(ch, REAL_OTHER_COIN, 1000000);
-}
