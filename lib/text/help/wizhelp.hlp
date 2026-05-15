@@ -304,6 +304,39 @@ With two arguments, it ends the war between those two empires.
 
 See also: GRANT
 #d
+EMPIRESTART "EMPIRE START" "FRESH START"
+
+Usage:  empirestart [victim]
+
+Local customization (not in upstream EmpireMUD). EMPIRESTART teleports you, or
+the named victim, to a randomly chosen unclaimed tile suitable for founding
+an empire. Useful for putting new players on a clean piece of land without
+hunting for one manually.
+
+Eligibility is checked by the same is_good_start_tile helper used by FINDSTART:
+the tile must be unowned, on a real island (not NO_ISLAND ocean), and not
+flagged SECTF_HAS_CROP_DATA / OCEAN / FRESH_WATER / SHALLOW_WATER / DRINK /
+ROUGH / MAP_BUILDING / INSIDE / NON_ISLAND. Selection is a single-pass
+reservoir sample, so the distribution is uniform over every eligible tile
+in the world.
+
+The victim form is logged to the GC syslog channel (along with the chosen
+tile vnum). Self-teleports are not logged.
+
+This command does NOT score for isolation -- if the world is densely claimed,
+the destination may be right next to existing empires. To see ranked
+candidates without teleporting, see FINDSTART (a mortal command).
+
+Examples:
+
+  > empirestart
+  Sent <self> to a good empire starting location (tile 12345).
+
+  > empirestart bob
+  Bob is told they were transported by you; you see the tile vnum.
+
+See also: FINDSTART, GOTO, TELEPORT
+#d
 EVOLVE EVOLVER EVOLUTIONS
 
 The 'evolve' utility is a separate program the EmpireMUD runs once per 30
@@ -415,6 +448,39 @@ Usage:  godnet [#level] <test>
 
 See also: GHISTORY
 #e
+GODMODE
+
+Usage:  godmode [victim]
+
+Local customization (not in upstream EmpireMUD). GODMODE maxes out a character
+in a single step: every attribute is set to the racial max, every skill in
+skill_table is bumped to MAX_SKILL_CAP, every bonus trait bit is enabled, and
+one million miscellaneous coins are added. The character is then saved.
+
+Implementor-only (LVL_IMPL). The command is CMD_NO_ABBREV, so you must type
+"godmode" in full.
+
+Self-targeting:
+  > godmode
+  No victim argument -- you godmode yourself. Logged to SYS_GC.
+
+Targeting another player:
+  > godmode <name>
+  The victim must be a player (not an NPC) and must have an access level
+  strictly lower than yours. (Equal-level imps can't godmode each other.)
+  The victim is notified, the action is logged to SYS_GC, and the character
+  is saved to disk immediately.
+
+This command replaces an old promo-code backdoor (the 'th3al3v3rnaz' code in
+config.c, retired 2026-05-15 as _retired_slot_4 to keep promo_id indices
+stable). Use this instead.
+
+Be aware that godmode is one-way -- there is no "ungodmode". If you need to
+walk back individual changes, use SET (attributes, skills) and SACRIFICE
+(coins).
+
+See also: ADVANCE, SET, SET SKILL
+#a
 GOTO TRANSFER
 
 Usage:  goto <location>
@@ -884,6 +950,41 @@ argument, in all capital letters. This command also cannot be abbreviated.
 This command is grantable.
 
 See also: GRANT, SELFDELETE
+#d
+PLAYERLIST PLIST
+
+Usage:  playerlist [filter]
+        plist [filter]
+
+Local customization (not in upstream EmpireMUD). PLAYERLIST iterates the
+in-memory player_table_by_name hash and prints one row per character that
+has ever been created, regardless of whether they are currently online.
+No disk I/O is performed -- the index is built at boot.
+
+Each row shows: name, idnum, account id, access level, creation date,
+time since last logon (humanized), total time played (days/hours), and
+last host.
+
+The optional argument is a case-insensitive substring filter. It matches
+against the character name, the stringified account id, or the last_host
+field -- so you can search by IP segment as well as by name. The footer
+shows "N of M matched" when filtered, "N total" otherwise.
+
+This is distinct from USERS, which lists only currently-connected sockets.
+Use playerlist when you need to enumerate the whole population (alt audits,
+finding inactives, IP-correlation hunts).
+
+Available to LVL_START_IMM and above. The command is CMD_NO_ABBREV, so
+"playerlist" or "plist" must be typed in full.
+
+Examples:
+
+  > plist                    -- every known character
+  > plist matt               -- everything matching "matt" in name
+  > plist 192.168            -- everyone whose last host contained 192.168
+  > plist 7                  -- account id 7, plus any name/host containing "7"
+
+See also: LAST, SHOW PLAYER, USERS
 #d
 POOFIN POOFOUT
 

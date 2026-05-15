@@ -684,6 +684,48 @@ for that empire.
 
 See also: MAINTAIN, WORKFORCE
 #
+FINDSTART "FIND START" "FRESH START"
+
+Usage:  findstart
+
+Local customization (not in upstream EmpireMUD). FINDSTART suggests up to three
+unclaimed map tiles that look like good places to found a new empire. It does
+not teleport or claim anything -- it is purely an advisor. Available to all
+mortals as part of the empire command set.
+
+How it picks:
+  - In a single pass over the land map it collects every claimed tile (for
+    distance calculations) and reservoir-samples up to 50 candidate tiles.
+    A candidate must be unowned, on a real island, and not water / inside /
+    rough / map-building / non-island terrain.
+  - Each candidate is scored. Tiles on an island with NO existing empire
+    claims get a 10000 bonus and dominate the ranking. Among same-island
+    candidates the tiebreak is wrapped-Manhattan distance from the nearest
+    claimed tile (the world wraps east-west).
+  - The top three by score are printed.
+
+Each result line shows: rank, (x, y), island name, sector type, and a
+status note such as "uninhabited island", "37 tiles from nearest claim", or
+"neighbors present".
+
+The shortlist is non-deterministic. Run findstart again to draw a new pool.
+
+If no suitable tile exists anywhere (a very dense world), the command says so
+instead of returning results.
+
+For immortals who want to move a player rather than recommend a spot, see
+HELP EMPIRESTART.
+
+Examples:
+
+  > findstart
+  Suggested fresh starting locations:
+    1. (42, 88) on Aurelia -- Plains -- uninhabited island
+    2. (-117, 30) on Vesta -- Forest -- 37 tiles from nearest claim
+    3. (200, -45) on Vesta -- Grove -- 21 tiles from nearest claim
+
+See also: CLAIM, EMPIRE, FOUND, NEWBIE
+#
 FORTIFICATIONS "FORTIFICATIONS GOAL"
 
 Fortifications (Defense goal)
