@@ -8681,26 +8681,144 @@ ACMD(do_empirestart) {
 }
 
 
-// Mortal advisor: describe a recommended unclaimed empire starting tile.
-// Doesn't teleport — just tells the player where a good fresh spot exists.
-ACMD(do_findstart) {
-	struct map_data *best;
-	room_data *room;
+// How many tiles to consider as candidates, and how many to display.
+#define FINDSTART_CANDIDATE_POOL  50
+#define FINDSTART_RESULTS_TO_SHOW  3
 
-	if (!(best = pick_random_start_tile())) {
+// One claimed map tile, captured for scoring distance to candidates.
+struct findstart_claim {
+	int x, y;
+	int island_id;
+};
+
+// A candidate fresh-start tile plus its computed scoring data.
+struct findstart_candidate {
+	struct map_data *tile;
+	int distance_to_nearest_claim;	// -1 when there are no claims anywhere
+	bool same_island_has_claims;
+	int score;	// higher is better
+};
+
+// Manhattan distance respecting horizontal world wrap (WRAP_X = TRUE).
+static int findstart_wrapped_manhattan(int x1, int y1, int x2, int y2) {
+	int dx = ABSOLUTE(x1 - x2);
+	int dy = ABSOLUTE(y1 - y2);
+	if (WRAP_X && dx > MAP_WIDTH / 2) {
+		dx = MAP_WIDTH - dx;
+	}
+	if (WRAP_Y && dy > MAP_HEIGHT / 2) {
+		dy = MAP_HEIGHT - dy;
+	}
+	return dx + dy;
+}
+
+// qsort comparator: higher score first.
+static int findstart_compare(const void *a, const void *b) {
+	const struct findstart_candidate *ca = a;
+	const struct findstart_candidate *cb = b;
+	return cb->score - ca->score;
+}
+
+
+// Mortal advisor: list up to three recommended unclaimed empire starting
+// tiles, ranked to prefer uninhabited islands and tiles far from existing
+// claims. Doesn't teleport — purely informational.
+ACMD(do_findstart) {
+	extern struct map_data *land_map;
+	struct map_data *map;
+	struct findstart_candidate cands[FINDSTART_CANDIDATE_POOL];
+	struct findstart_claim *claims = NULL;
+	int n_cands = 0, n_claims = 0, claims_cap = 0;
+	int seen_eligible = 0;
+	int iter, j, dist, best, show;
+	char status[256];
+
+	// Single pass over land_map: capture every claimed tile, and reservoir-
+	// sample up to FINDSTART_CANDIDATE_POOL eligible tiles.
+	for (map = land_map; map; map = map->next) {
+		if (ROOM_OWNER(real_room(map->vnum))) {
+			if (n_claims >= claims_cap) {
+				claims_cap = claims_cap ? claims_cap * 2 : 256;
+				RECREATE(claims, struct findstart_claim, claims_cap);
+			}
+			claims[n_claims].x = MAP_X_COORD(map->vnum);
+			claims[n_claims].y = MAP_Y_COORD(map->vnum);
+			claims[n_claims].island_id = map->shared->island_id;
+			++n_claims;
+			continue;
+		}
+		if (!is_good_start_tile(map)) continue;
+		++seen_eligible;
+		if (n_cands < FINDSTART_CANDIDATE_POOL) {
+			cands[n_cands].tile = map;
+			++n_cands;
+		}
+		else {
+			// Reservoir replace: index in [0, seen_eligible-1]; if it lands
+			// inside the pool, swap in.
+			j = number(0, seen_eligible - 1);
+			if (j < FINDSTART_CANDIDATE_POOL) {
+				cands[j].tile = map;
+			}
+		}
+	}
+
+	if (n_cands == 0) {
+		if (claims) free(claims);
 		msg_to_char(ch, "The world is unusually full — no fresh starting spots are available right now.\r\n");
 		return;
 	}
-	if (!(room = real_room(best->vnum))) {
-		msg_to_char(ch, "The location seems to slip away as you focus on it. Try again.\r\n");
-		return;
+
+	// Score each candidate.
+	for (iter = 0; iter < n_cands; ++iter) {
+		int cx = MAP_X_COORD(cands[iter].tile->vnum);
+		int cy = MAP_Y_COORD(cands[iter].tile->vnum);
+		int cid = cands[iter].tile->shared->island_id;
+		best = -1;
+		cands[iter].same_island_has_claims = FALSE;
+		for (j = 0; j < n_claims; ++j) {
+			if (claims[j].island_id == cid) {
+				cands[iter].same_island_has_claims = TRUE;
+			}
+			dist = findstart_wrapped_manhattan(cx, cy, claims[j].x, claims[j].y);
+			if (best < 0 || dist < best) {
+				best = dist;
+			}
+		}
+		cands[iter].distance_to_nearest_claim = best;
+		// Strongly prefer uninhabited islands; tiebreak on distance to claims.
+		// Distance is clamped so the score stays well under the 10000 bonus.
+		cands[iter].score = (cands[iter].same_island_has_claims ? 0 : 10000)
+			+ (best < 0 ? 5000 : MIN(best, 9999));
 	}
 
-	msg_to_char(ch, "A suitable fresh starting location:\r\n");
-	msg_to_char(ch, "  Coordinates: (%d, %d)\r\n", MAP_X_COORD(best->vnum), MAP_Y_COORD(best->vnum));
-	msg_to_char(ch, "  Island: %s\r\n", get_island_name_for(best->shared->island_id, ch));
-	msg_to_char(ch, "  Terrain: %s\r\n", GET_SECT_NAME(best->sector_type));
-	msg_to_char(ch, "Travel toward (%d, %d) to investigate, or run 'findstart' again for a different recommendation.\r\n", MAP_X_COORD(best->vnum), MAP_Y_COORD(best->vnum));
+	if (claims) free(claims);
+
+	qsort(cands, n_cands, sizeof(struct findstart_candidate), findstart_compare);
+
+	show = MIN(FINDSTART_RESULTS_TO_SHOW, n_cands);
+	msg_to_char(ch, "Suggested fresh starting locations:\r\n");
+	for (iter = 0; iter < show; ++iter) {
+		struct map_data *t = cands[iter].tile;
+		if (!cands[iter].same_island_has_claims) {
+			strcpy(status, "uninhabited island");
+		}
+		else if (cands[iter].distance_to_nearest_claim >= 0) {
+			snprintf(status, sizeof(status), "%d tile%s from nearest claim",
+				cands[iter].distance_to_nearest_claim,
+				cands[iter].distance_to_nearest_claim == 1 ? "" : "s");
+		}
+		else {
+			strcpy(status, "neighbors present");
+		}
+		msg_to_char(ch, "  %d. (%d, %d) on %s -- %s; %s\r\n",
+			iter + 1,
+			MAP_X_COORD(t->vnum), MAP_Y_COORD(t->vnum),
+			get_island_name_for(t->shared->island_id, ch),
+			GET_SECT_NAME(t->sector_type),
+			status);
+	}
+	msg_to_char(ch, "Travel toward any of these coordinates to investigate, or run 'findstart' again for a different shortlist.\r\n");
 }
 
 
