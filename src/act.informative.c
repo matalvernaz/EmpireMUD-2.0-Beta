@@ -1054,7 +1054,97 @@ void display_score_to_char(char_data *ch, char_data *to) {
 	empire_data *emp;
 	struct time_info_data playing_time;
 	struct page_display *line;
-	
+
+	// Screen-reader-friendly path: one fact per line, no decorative bars or
+	// multi-column grids. Stats every NVDA user needs to fight, eat, heal.
+	if (PRF_FLAGGED(to, PRF_SCREEN_READER)) {
+		build_page_display(to, "Score for %s", PERS(ch, ch, 1));
+		get_player_skill_string(ch, lbuf, TRUE);
+		build_page_display(to, "Skill: %s", lbuf);
+		build_page_display(to, "Level: %d (%d)", GET_COMPUTED_LEVEL(ch), GET_SKILL_LEVEL(ch));
+		if (GET_AGE_MODIFIER(ch) || (IS_VAMPIRE(ch) && GET_REAL_AGE(ch) != GET_AGE(ch))) {
+			build_page_display(to, "Age: %d/%d years", GET_AGE(ch), GET_REAL_AGE(ch));
+		}
+		else {
+			build_page_display(to, "Age: %d years", GET_AGE(ch));
+		}
+		playing_time = *real_time_passed((time(0) - ch->player.time.logon) + ch->player.time.played, 0);
+		build_page_display(to, "Play time: %dd %dh", playing_time.day, playing_time.hours);
+		if ((emp = GET_LOYALTY(ch)) && !IS_NPC(ch)) {
+			build_page_display(to, "Rank: %s&0 (%s)", EMPIRE_RANK(emp, GET_RANK(ch)-1), EMPIRE_NAME(emp));
+		}
+		if (GET_BONUS_TRAITS(ch)) {
+			prettier_sprintbit(GET_BONUS_TRAITS(ch), bonus_bit_descriptions, lbuf);
+			build_page_display(to, "Bonus traits: %s", lbuf);
+		}
+		build_page_display(to, "Health: %d of %d, regen %+d per %ds", GET_HEALTH(ch), GET_MAX_HEALTH(ch), health_gain(ch, TRUE), SECS_PER_REAL_UPDATE);
+		build_page_display(to, "Move: %d of %d, regen %+d per %ds", GET_MOVE(ch), GET_MAX_MOVE(ch), move_gain(ch, TRUE), SECS_PER_REAL_UPDATE);
+		build_page_display(to, "Mana: %d of %d, regen %+d per %ds", GET_MANA(ch), GET_MAX_MANA(ch), mana_gain(ch, TRUE), SECS_PER_REAL_UPDATE);
+		if (IS_VAMPIRE(ch)) {
+			build_page_display(to, "Blood: %d of %d, upkeep %d per hour", GET_BLOOD(ch), GET_MAX_BLOOD(ch), MAX(0, GET_BLOOD_UPKEEP(ch)));
+		}
+		*lbuf = '\0';
+		if ((str = how_hungry(ch))) {
+			sprintf(lbuf + strlen(lbuf), "%s%s", (*lbuf ? ", " : ""), str);
+		}
+		if ((str = how_thirsty(ch))) {
+			sprintf(lbuf + strlen(lbuf), "%s%s", (*lbuf ? ", " : ""), str);
+		}
+		if ((str = how_drunk(ch))) {
+			sprintf(lbuf + strlen(lbuf), "%s%s", (*lbuf ? ", " : ""), str);
+		}
+		if ((str = how_blood_starved(ch))) {
+			sprintf(lbuf + strlen(lbuf), "%s%s", (*lbuf ? ", " : ""), str);
+		}
+		temperature = get_relative_temperature(ch);
+		if (temperature <= -1 * config_get_int("temperature_discomfort") || temperature >= config_get_int("temperature_discomfort")) {
+			sprintf(lbuf + strlen(lbuf), "%s%s", (*lbuf ? ", " : ""), temperature_to_string(temperature));
+		}
+		build_page_display(to, "Conditions: %s", *lbuf ? lbuf : "none");
+		build_page_display_str(to, display_attributes(ch));
+		// Secondary attributes, one per line
+		val = get_dodge_modifier(ch, NULL, FALSE) - (hit_per_dex * GET_DEXTERITY(ch));
+		build_page_display(to, "Dodge: %d", val);
+		build_page_display(to, "Block: %d", get_block_rating(ch, FALSE));
+		build_page_display(to, "Resist physical: %d", GET_RESIST_PHYSICAL(ch));
+		build_page_display(to, "Resist magical: %d", GET_RESIST_MAGICAL(ch));
+		build_page_display(to, "Bonus physical: %+d", GET_BONUS_PHYSICAL(ch));
+		build_page_display(to, "Bonus magical: %+d", GET_BONUS_MAGICAL(ch));
+		build_page_display(to, "Bonus healing: %+d", GET_BONUS_HEALING(ch));
+		val = get_to_hit(ch, NULL, FALSE, FALSE) - (hit_per_dex * GET_DEXTERITY(ch));
+		build_page_display(to, "To-hit: %d", val);
+		build_page_display(to, "Speed: %.2f", get_combat_speed(ch, WEAR_WIELD));
+		build_page_display(to, "Crafting: %d", get_crafting_level(ch));
+		// Skills: one per line, only those at level > 0 and not in-development
+		count = 0;
+		HASH_ITER(hh, GET_SKILL_HASH(ch), skdata, next_skill) {
+			if (skdata->level > 0 && !SKILL_FLAGGED(skdata->ptr, SKILLF_IN_DEVELOPMENT)) {
+				pts = get_ability_points_available_for_char(ch, skdata->vnum);
+				if (pts > 0) {
+					build_page_display(to, "  %s: %d (%d unspent)", SKILL_NAME(skdata->ptr), skdata->level, pts);
+				}
+				else {
+					build_page_display(to, "  %s: %d", SKILL_NAME(skdata->ptr), skdata->level);
+				}
+				++count;
+			}
+		}
+		if (!count) {
+			build_page_display_str(to, "Skills: none");
+		}
+		if (IS_GOD(ch) || IS_IMMORTAL(ch)) {
+			build_page_display_str(to, "Resources:");
+			for (i = 0; i < NUM_MATERIALS; i++) {
+				if (GET_RESOURCE(ch, i)) {
+					build_page_display(to, "  %s: %d", materials[i].name, GET_RESOURCE(ch, i));
+				}
+			}
+		}
+		show_character_affects_full(ch, to, FALSE, FALSE);
+		send_page_display(to);
+		return;
+	}
+
 	// build header (max length: 79)
 	safe_snprintf(lbuf, sizeof(lbuf), " %s ", config_get_string("mud_name"));
 	strcpy(lbuf2, " +");
