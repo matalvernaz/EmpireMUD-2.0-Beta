@@ -174,13 +174,50 @@ CREATE
 
 Usage:  create [number] <item>
 
-This command allows a god or immortal to create one or more simple items
-instantly. Normally, only resources and simple tools can be created this way.
-In order to create items, you must have the correct resources available. You
-get resources when people sacrifice items to you. Resource counts can be seen
-on your score sheet.
+CREATE conjures one or more objects out of thin air. The match is done against
+object keywords (same as 'get'), so any name that uniquely identifies a
+creatable item will work. You may create up to 1000 in a single command.
 
-See also: SACRIFICE, SCORE
+Newly created items are scaled to minimum level and flagged OBJ_CREATED so they
+cannot be sacrificed for resource gain. Items you cannot carry (no TAKE wear
+flag) drop to the floor instead of your inventory. Load triggers fire normally.
+
+What can be created:
+  Only objects with the CREATABLE flag set in OLC can be conjured. To find
+  the list, use:
+
+    .olc fullsearch obj flags creatable
+
+  Typical CREATABLE items are basic resources (logs, stone, flint, fibers) and
+  the simple tools/containers that gods are expected to hand out. If an item
+  is missing the flag, no amount of resources will let you create it -- use
+  LOAD instead, which has no flag restriction.
+
+Resource cost:
+  The cost is (rate_item + 1) of the item's material, charged against the
+  resource pool on your score sheet. Gods earn resources when players
+  sacrifice items to them at a monument or to the in-game patron system.
+
+Who pays:
+  - Gods (LVL_GOD) and base immortals (LVL_START_IMM, LVL_ASST) must have
+    the required resources on hand. If you run out partway through a batch,
+    creation stops and you are told.
+  - Co-Implementors (LVL_CIMPL+) bypass the resource check entirely, as does
+    any immortal who has been given the 'load' grant. This is documented
+    under PREMIUM COMMANDS.
+
+Examples:
+
+  > create log
+  You create a log!
+
+  > create 50 stone
+  You create a chunk of stone (x50)!
+
+  > create flint
+  You have insufficient resources to create more.
+
+See also: GRANT, LOAD, OEDIT, PREMIUM COMMANDS, SACRIFICE, SCORE
 #e
 DATE
 
