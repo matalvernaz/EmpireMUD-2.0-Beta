@@ -136,6 +136,7 @@ ACMD(do_earthmeld);
 ACMD(do_eat);
 ACMD(do_echo);
 ACMD(do_edelete);
+ACMD(do_empirestart);
 ACMD(do_editnotes);
 ACMD(do_eedit);
 ACMD(do_efind);
@@ -634,6 +635,7 @@ cpp_extern const struct command_info cmd_info[] = {
 	SIMPLE_CMD( "eedit", POS_DEAD, do_eedit, NO_MIN, CTYPE_UTIL ),
 	SIMPLE_CMD( "efind", POS_SLEEPING, do_efind, NO_MIN, CTYPE_EMPIRE ),
 	SIMPLE_CMD( "elog", POS_DEAD, do_elog, NO_MIN, CTYPE_EMPIRE ),
+	SIMPLE_CMD( "empirestart", POS_DEAD, do_empirestart, LVL_START_IMM, CTYPE_IMMORTAL ),
 	SIMPLE_CMD( "empires", POS_DEAD, do_empires, NO_MIN, CTYPE_EMPIRE ),
 	SCMD_CMD( "empireidentify", POS_DEAD, do_empire_inventory, NO_MIN, CTYPE_EMPIRE, SCMD_EIDENTIFY ),
 	SCMD_CMD( "empireinventory", POS_DEAD, do_empire_inventory, NO_MIN, CTYPE_EMPIRE, SCMD_EINVENTORY ),

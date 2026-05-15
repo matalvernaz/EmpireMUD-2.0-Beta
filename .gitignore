@@ -3,6 +3,15 @@ syslog
 syslog.CRASH
 .DS_Store
 
+# Runtime game state
+lib/etc/daily_quests
+lib/etc/trading_post
+lib/misc/game_data
+
+# Autoconf-generated
+src/conf.h
+src/util/Makefile
+
 *.plist
 
 bin/plrconv-20b1-to-20b2.dSYM/Contents/Resources/DWARF/plrconv-20b1-to-20b2

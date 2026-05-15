@@ -8599,6 +8599,75 @@ ACMD(do_trans) {
 }
 
 
+// Teleport a player (or self) to a good unclaimed starting location for an empire.
+// Criteria: on the land_map, not claimed, not water, not adventure, not rough, not inside.
+ACMD(do_empirestart) {
+	extern struct map_data *land_map;
+	struct map_data *map, *best = NULL;
+	char_data *victim = ch;
+	room_data *room, *was_in;
+	int tries = 0, rand_skip, total = 0;
+
+	one_argument(argument, arg);
+	if (*arg) {
+		if (!(victim = get_char_vis(ch, arg, NULL, FIND_CHAR_WORLD))) {
+			msg_to_char(ch, "No player found by that name.\r\n");
+			return;
+		}
+		if (IS_NPC(victim)) {
+			msg_to_char(ch, "You can't send an NPC to a starting location.\r\n");
+			return;
+		}
+	}
+
+	// count eligible tiles
+	for (map = land_map; map; map = map->next) {
+		if (ROOM_OWNER(real_room(map->vnum))) continue;
+		if (SECT_FLAGGED(map->sector_type, SECTF_NO_CLAIM | SECTF_FRESH_WATER | SECTF_OCEAN | SECTF_ADVENTURE | SECTF_ROUGH | SECTF_MAP_BUILDING | SECTF_INSIDE | SECTF_NON_ISLAND)) continue;
+		if (map->shared->island_id == NO_ISLAND) continue;
+		++total;
+	}
+
+	if (total == 0) {
+		msg_to_char(ch, "No suitable unclaimed starting location found.\r\n");
+		return;
+	}
+
+	// pick a random eligible tile
+	rand_skip = number(0, total - 1);
+	for (map = land_map; map && tries <= rand_skip; map = map->next) {
+		if (ROOM_OWNER(real_room(map->vnum))) continue;
+		if (SECT_FLAGGED(map->sector_type, SECTF_NO_CLAIM | SECTF_FRESH_WATER | SECTF_OCEAN | SECTF_ADVENTURE | SECTF_ROUGH | SECTF_MAP_BUILDING | SECTF_INSIDE | SECTF_NON_ISLAND)) continue;
+		if (map->shared->island_id == NO_ISLAND) continue;
+		best = map;
+		++tries;
+	}
+
+	if (!best || !(room = real_room(best->vnum))) {
+		msg_to_char(ch, "Failed to find a valid room.\r\n");
+		return;
+	}
+
+	syslog(SYS_GC, GET_INVIS_LEV(ch), TRUE, "GC: %s sent %s to empire start location %d", GET_REAL_NAME(ch), GET_REAL_NAME(victim), best->vnum);
+
+	act("$n disappears in a swirl of light.", TRUE, victim, 0, 0, TO_ROOM);
+	was_in = IN_ROOM(victim);
+	char_from_room(victim);
+	char_to_room(victim, room);
+	GET_LAST_DIR(victim) = NO_DIR;
+	RESET_LAST_MESSAGED_TEMPERATURE(victim);
+	act("$n arrives in a swirl of light.", TRUE, victim, 0, 0, TO_ROOM);
+	if (victim != ch)
+		msg_to_char(victim, "You have been transported to a fresh starting area by %s.\r\n", GET_NAME(ch));
+	qt_visit_room(victim, IN_ROOM(victim));
+	look_at_room(victim);
+	enter_triggers(victim, NO_DIR, "empirestart", FALSE, was_in);
+	greet_triggers(victim, NO_DIR, "empirestart", FALSE, was_in);
+	msdp_update_room(victim);
+	msg_to_char(ch, "Sent %s to a good empire starting location (tile %d).\r\n", GET_NAME(victim), best->vnum);
+}
+
+
 ACMD(do_unbind) {
 	obj_data *obj;
 	

