@@ -28,7 +28,7 @@ COPY --from=builder /build/lib/world/wld/map /app/bin/util/map
 COPY --from=builder /build/lib/world/wld/read_map /app/bin/util/read_map
 COPY autorun /app/autorun
 RUN chmod +x /app/autorun /app/bin/* /app/bin/util/* \
-    && mkdir -p /app/lib /app/log \
+    && mkdir -p /app/lib /app/log /app/data \
     && chown -R mud:mud /app
 
 USER mud
