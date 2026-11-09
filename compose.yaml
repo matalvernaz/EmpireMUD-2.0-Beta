@@ -4,6 +4,10 @@ services:
     image: empiremud:local
     container_name: empiremud
     restart: unless-stopped
+    # autorun passes Docker's SIGTERM on to the game, which saves the world and exits
+    # (about 12 s, measured 2026-11-09). The default 10 s stop timeout SIGKILLed it
+    # mid-save; offen's nightly stop-during-backup uses this same timeout.
+    stop_grace_period: 90s
     cap_drop:
       - ALL
     security_opt:

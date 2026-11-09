@@ -41,14 +41,58 @@ FLAGS='-q'
 core_directory="lib"
 
 #############################################################################
+#
+# Stopping the container (docker stop, compose stop, the nightly backup):
+# Docker sends SIGTERM to this script, which runs as PID 1. Without a trap the
+# kernel drops that signal, the game never hears it, and Docker SIGKILLs it
+# mid-game when the stop timeout runs out. So pass SIGTERM on to the game,
+# which saves players, empires, the map and every room and then exits
+# (hupsig in src/comm.c), wait for it, and exit instead of restarting it.
+# compose.yaml gives the save time with stop_grace_period.
+
+stopping=0
+game_pid=""
+term_sent=0
+
+stop_game() {
+  stopping=1
+  # the game gets SIGTERM once only: a second stop must not start a second save
+  if [ -n "$game_pid" ] && [ "$term_sent" = 0 ]; then
+    term_sent=1
+    echo "autorun: stop requested `date`, sending SIGTERM to the game (pid $game_pid)" >> syslog
+    kill -TERM "$game_pid" 2>/dev/null
+  fi
+}
+
+trap stop_game TERM
 
 while ( : ) do
+
+  # a stop that came in while the game was down: don't start it again
+  if [ "$stopping" = 1 ]; then
+    echo "autorun stopped by SIGTERM `date`" >> syslog
+    exit 0
+  fi
 
   DATE=`date`
   echo "autorun starting game $DATE" >> syslog
   echo "running bin/empire $FLAGS $PORT" >> syslog
 
-  bin/empire $FLAGS $PORT >> syslog 2>&1
+  # run the game in the background so the trap can run while it is up
+  bin/empire $FLAGS $PORT >> syslog 2>&1 &
+  game_pid=$!
+
+  # a stop that came in just before the game started still has to reach it
+  if [ "$stopping" = 1 ]; then
+    stop_game
+  fi
+
+  # wait returns as soon as the trap runs, so keep waiting until the game has really gone
+  wait "$game_pid"
+  while kill -0 "$game_pid" 2>/dev/null; do
+    wait "$game_pid"
+  done
+  game_pid=""
 
   # after shutdown/crash:
   # check for multiple core files and delete all but the oldest 1 and newest 4
@@ -110,9 +154,15 @@ while ( : ) do
     exit
   fi
 
+  # the game has saved and exited because the container is stopping: so do we
+  if [ "$stopping" = 1 ]; then
+    echo "autorun stopped by SIGTERM `date`" >> syslog
+    exit 0
+  fi
+
   sleep 1
 
-  while [ -r pause ]; do
+  while [ -r pause ] && [ "$stopping" = 0 ]; do
     sleep 1
   done
 
