@@ -4,6 +4,12 @@ services:
     image: empiremud:local
     container_name: empiremud
     restart: unless-stopped
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 512m
+    pids_limit: 256
     labels:
       - docker-volume-backup.stop-during-backup=true
     ports:
