@@ -126,12 +126,31 @@ Livestock Livelihood~
 build chicken coops, pastures, and pigsties. Your workforce will produce eggs,
 poultry, mutton, wool, and pork from these outdoor buildings.
 ~
-3 1 15 0 b
+4 1 15 0 b
 K 2 5216
 K 2 5217
 K 2 5218
-K 2 5111
 P 1002
 P 2011
+S
+#1909
+High Mountain Graziers~
+   Never content with the flats, your empire spreads its pastoral range to the
+highest mountain pastures, where it can graze yaks and llamas at the roof of
+the world.
+~
+4 1 0 5 0
+K 2 5224
+K 2 5225
+K 2 5226
+P 1908
+P 1904
+W
+7 5111 0 1 a
+W
+7 5214 0 1 a
+_
+A minor bonus for having both Mountain Engineering and Livestock Livelihood.
+~
 S
 $

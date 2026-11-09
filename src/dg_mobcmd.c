@@ -729,7 +729,7 @@ ACMD(do_mload) {
 	room_data *in_room;
 	char_data *mob, *tch;
 	obj_data *object, *cnt;
-	vehicle_data *veh;
+	vehicle_data *veh, *cnt_veh;
 	struct empire_storage_data *store;
 	char *target;
 	bool ally = FALSE;
@@ -925,6 +925,12 @@ ACMD(do_mload) {
 			load_otrigger(object);
 			return;
 		}
+		cnt_veh = (*arg1 == UID_CHAR) ? get_vehicle(arg1) : get_vehicle_room(IN_ROOM(ch), arg1, NULL);
+		if (cnt_veh && VEH_FLAGGED(cnt_veh, VEH_CONTAINER)) {
+			obj_to_vehicle(object, cnt_veh);
+			load_otrigger(object);
+			return;
+		}
 
 		/* neither char nor container found - just dump it in room */
 		obj_to_room(object, IN_ROOM(ch)); 
@@ -972,12 +978,23 @@ ACMD(do_mload) {
 
 ACMD(do_mlog) {
 	char source_info[MAX_STRING_LENGTH];
+	
+	if (!MOB_OR_IMPL(ch)) {
+		send_config_msg(ch, "huh_string");
+		return;
+	}
+	
 	safe_snprintf(source_info, sizeof(source_info), "mob %d %s", GET_MOB_VNUM(ch), GET_SHORT_DESC(ch));
 	script_log_command(argument, source_info);
 }
 
 
 ACMD(do_mmod) {
+	if (!MOB_OR_IMPL(ch)) {
+		send_config_msg(ch, "huh_string");
+		return;
+	}
+	
 	script_modify(argument);
 }
 
@@ -1907,7 +1924,7 @@ ACMD(do_mforce) {
 
 		if (*arg == UID_CHAR) {
 			if (!(victim = get_char(arg))) {
-				mob_log(ch, "mforce: victim (%s) does not exist",arg);
+				mob_log(ch, "mforce: victim (%s) does not exist (mforce %s %s)", arg, arg, argument);
 				return;
 			}
 		}

@@ -201,6 +201,8 @@ When using field - The variable returns:
 &chealth&0 - Current buildings or their interiors, remaining health/damage.
 &cheight&0 - Get the current height of a map tile or set it with &cheight(num)&0.
    Use &cview_height&0 instead if you want to include things built on it.
+&chomeroom&0 - For interiors of buildings, the starting/entrance room. For
+   interiors of ships, the room where you board the ship.
 &cid&0 - The unique id of the room.
 &cin_city&0 - For claimed land, true if the tile is in a city for the owner.
 &cin_city(true)&0 - Like in_city but also checks the one-hour city wait time.
@@ -208,8 +210,10 @@ When using field - The variable returns:
 &cisland, island(for)&0 - The name of the island the room is on, if any. If the
    subfield is a person or empire, instead gives their custom name for it.
 &cisland_flagged(FLAG)&0 - See ISLAND FLAGS for a list.
+&cis_ocean&0 - Room is an ocean tile.
 &cis_on_map&0 - True if the room is on the map (including closed buildings).
 &cis_outdoors&0 - True if it's on the map, in an outdoor adventure, etc.
+&cis_water&0 - Room is any type of water location that requires swimming.
 &cis_zenith_day&0 - True if it's the day of the sun's zenith passage here.
 &cmaxhealth&0 - For buildings or their interiors, maximum health/damage.
 &cmax_citizens&0 - If a building, the max number of citizens who can live here.
@@ -221,7 +225,7 @@ When using field - The variable returns:
 &cname&0 - The name of the room.
 &cpainted&0 - The color the building is painted, if any.
 &cpeople&0 - The id of the first character in the room, or an empty return.
-   Note that this will skip !SEE mobs.
+   Note that this will skip NO-SEE-IN-ROOM mobs.
 &cpeople(VNUM)&0 - The id of the first instance of that mob vnum in the room.
 &cplayers_present&0 - Number of players in the room; 0/false if none.
 &crmt_flagged(AFF)&0 - True if the room has a room template flag on it.

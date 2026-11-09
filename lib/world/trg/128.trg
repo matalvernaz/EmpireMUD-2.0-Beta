@@ -1,14 +1,24 @@
 #12800
 Celestial Forge: Donate to open portal~
-0 c 0 7
+0 c 0 16
 L c 12800
 L c 12801
+L c 12802
+L c 12803
+L c 12804
 L c 12806
 L j 12810
 L j 12850
+L j 12890
+L j 12920
+L j 12960
 L w 5100
 L w 5101
+L w 5102
+L w 5103
+L w 5104
 donate~
+set forge_list Lodestone Forge, Victory Forge, Echo Forge, Terminus Forge, or the Dawnforge
 set room %self.room%
 set which 0
 set dest 0
@@ -16,19 +26,34 @@ set dest 0
 if !%actor.canuseroom_guest(%room%)%
   %send% %actor% You don't have permission to do that here.
 elseif !%arg%
-  %send% %actor% Donate to which celestial forge? (iron, imperium, ...)
-elseif iron forge /= %arg% || lodestone forge /= %arg%
+  %send% %actor% Donate to which celestial forge? (%forge_list%)
+elseif iron forge /= %arg% || iron shard /= %arg% || lodestone forge /= %arg%
+  set name Lodestone Forge
   set which 12800
   set dest 12810
   set curr 5100
-  set str an iron shard
-elseif imperium forge /= %arg% || victory forge /= %arg%
+elseif imperium forge /= %arg% || imperium shard /= %arg% || victory forge /= %arg%
+  set name Victory Forge
   set which 12801
   set dest 12850
   set curr 5101
-  set str an imperium shard
+elseif eventide forge /= %arg% || eventide shard /= %arg% || echo forge /= %arg%
+  set name Echo Forge
+  set which 12802
+  set dest 12890
+  set curr 5102
+elseif meteorite forge /= %arg% || meteorite shard /= %arg% || terminus forge /= %arg%
+  set name Terminus Forge
+  set which 12803
+  set dest 12920
+  set curr 5103
+elseif celestial forge /= %arg% || celestial shard /= %arg% || dawnforge /= %arg% || the dawnforge /= %arg%
+  set name the Dawnforge
+  set which 12804
+  set dest 12960
+  set curr 5104
 else
-  %send% %actor% Unknown celestial forge.
+  %send% %actor% Unknown celestial forge. (%forge_list%)
 end
 * did we find one?
 if !%which% || !%dest%
@@ -36,7 +61,7 @@ if !%which% || !%dest%
 end
 * validate target
 if %room.contents(%which%)%
-  %send% %actor% There is already a portal to that celestial forge here.
+  %send% %actor% There is already a portal to %name% here.
   halt
 elseif %actor.currency(%curr%)% < 1
   eval curname %%currency.%curr%(1)%%
@@ -53,15 +78,16 @@ end
 set inport %room.contents%
 if %inport.vnum% != %which%
   %send% %actor% Something went wrong.
-  %log% syslog script Trig 12800 failed to open portal.
+  %log% syslog script Trig 12800 failed to open portal to %name%.
   halt
 end
 * charge
 nop %actor.give_currency(%curr%, -1)%
 * update portal-in
 nop %inport.val0(%toroom.vnum%)%
-%send% %actor% You donate %str% to the forge and @%inport% appears!
-%echoaround% %actor% ~%actor% donates %str% to the forge and @%inport% appears!
+eval curname %%currency.%curr%(1)%%
+%send% %actor% You donate %curname.ana% %curname% to the forge and @%inport% appears!
+%echoaround% %actor% ~%actor% donates %curname.ana% %curname% to the forge and @%inport% appears!
 * portal back
 %load% obj 12806 %toroom%
 set outport %toroom.contents%
@@ -78,15 +104,22 @@ end
 ~
 #12801
 Celestial Forge: Request exit~
-2 c 0 8
+2 c 0 15
 L c 9680
 L c 12800
 L c 12801
+L c 12802
+L c 12803
+L c 12804
 L c 12806
 L e 5195
 L j 12800
 L j 12810
 L j 12850
+L j 12890
+L j 12920
+L j 12926
+L j 12960
 return~
 if %actor.is_npc%
   * possibly immortal trying to return
@@ -120,6 +153,16 @@ if %cf_return%
       break
       case 12850
         set in_vnum 12801
+      break
+      case 12890
+        set in_vnum 12802
+      break
+      case 12920
+      case 12926
+        set in_vnum 12803
+      break
+      case 12960
+        set in_vnum 12804
       break
       default
         set in_vnum 0
@@ -183,19 +226,29 @@ end
 ~
 #12802
 Celestial Forge: Detect player entry, Grant abilities, Start progress~
-2 gA 100 12
+2 gA 100 22
 L c 9684
+L c 12917
 L e 5195
 L i 12800
 L j 12810
 L j 12815
 L j 12850
 L j 12855
+L j 12890
+L j 12895
+L j 12920
+L j 12926
+L j 12960
 L o 12810
 L o 12850
+L o 12890
+L o 12920
 L q 6
 L y 12810
 L y 12850
+L y 12890
+L y 12960
 ~
 if %actor.is_npc%
   halt
@@ -214,8 +267,7 @@ if %actor.skill(6)% >= 76
     if %actor.empire%
       nop %actor.empire.start_progress(12810)%
     end
-  end
-  if %room.template% >= 12850 && %room.template% <= 12855
+  elseif %room.template% >= 12850 && %room.template% <= 12855
     if !%actor.has_bonus_ability(12850)%
       * grant the ability after a short delay
       %load% obj 9684 %actor%
@@ -227,6 +279,60 @@ if %actor.skill(6)% >= 76
     if %actor.empire%
       nop %actor.empire.start_progress(12850)%
     end
+  elseif %room.template% >= 12890 && %room.template% <= 12895
+    if !%actor.has_bonus_ability(12890)%
+      * grant the ability after a short delay
+      %load% obj 9684 %actor%
+      set obj %actor.inventory%
+      if %obj.vnum% == 9684
+        nop %obj.val0(12890)%
+      end
+    end
+    if %actor.empire%
+      nop %actor.empire.start_progress(12890)%
+    end
+  elseif %room.template% >= 12920 && %room.template% <= 12926
+    if !%actor.has_bonus_ability(12920)%
+      * grant the ability after a short delay
+      %load% obj 9684 %actor%
+      set obj %actor.inventory%
+      if %obj.vnum% == 9684
+        nop %obj.val0(12920)%
+      end
+    end
+    if %actor.empire%
+      nop %actor.empire.start_progress(12920)%
+    end
+  elseif %room.template% >= 12960 && %room.template% <= 12965
+    * not currently a bonus ability
+    * if !%actor.has_bonus_ability(12960)%
+    *   * grant the ability after a short delay
+    *   %load% obj 9684 %actor%
+    *   set obj %actor.inventory%
+    *   if %obj.vnum% == 9684
+    *     nop %obj.val0(12960)%
+    *   end
+    * end
+    if %actor.empire%
+      nop %actor.empire.start_progress(12960)%
+    end
+  end
+end
+* Clear old fight vars
+if %method% != move
+  set var_list 12817_daily 12857_daily 12897_daily 12927_daily
+  while %var_list%
+    set varname %var_list.car%
+    set var_list %var_list.cdr%
+    if %actor.var(%varname%,0)% < %dailycycle%
+      rdelete %varname% %actor.id%
+    end
+  done
+done
+* Movement SFX
+if %room.template% >= 12890 && %room.template% <= 12899
+  if !%actor.inventory(12917)%
+    %load% obj 12917 %actor% inv
   end
 end
 * Track origin
@@ -248,9 +354,19 @@ end
 ~
 #12803
 Celestial Forge: Time and Weather commands~
-2 c 0 2
+2 c 0 12
 L j 12810
 L j 12850
+L j 12920
+L j 12921
+L j 12922
+L j 12923
+L j 12924
+L j 12925
+L j 12926
+L j 12927
+L j 12928
+L j 12929
 time weather~
 if %cmd.mudcommand% == time
   * TIME
@@ -261,6 +377,26 @@ if %cmd.mudcommand% == time
     case 12850
       %send% %actor% It looks like nighttime out through the flap.
     break
+    case 12920
+    case 12922
+    case 12923
+      %send% %actor% All you can see above the flames is dark smoke, but you surmise it is nighttime.
+    break
+    case 12924
+      %send% %actor% It seems like a serene, endless night.
+    break
+    case 12926
+      %send% %actor% It's hard to tell the time from down here beneath the rock.
+    break
+    case 12927
+    case 12928
+    case 12929
+      %send% %actor% There's no time for that now -- you're falling!
+    break
+    case 12960
+    case 12961
+      %send% %actor% There's no time here.
+    break
     default
       %send% %actor% The beautiful night sky overhead tells you it's nighttime.
     break
@@ -270,10 +406,34 @@ elseif %cmd.mudcommand% == weather
   * WEATHER
   switch %room.template%
     case 12810
+    case 12926
       %send% %actor% It's hard to tell the weather from in here.
     break
     case 12850
       %send% %actor% The night sky is cloudless outside.
+    break
+    case 12920
+    case 12922
+    case 12923
+      %send% %actor% Do the roaring flames that surround this rock count as weather?
+    break
+    case 12924
+      %send% %actor% There's no weather at all.
+    break
+    case 12921
+    case 12925
+      %send% %actor% The meteor showers are the only weather in the night sky.
+    break
+    case 12927
+    case 12928
+    case 12929
+      %send% %actor% It's windier than you've ever seen before... because you're falling!
+    break
+    case 12960
+      %send% %actor% The outlook is bright.
+    break
+    case 12961
+      %send% %actor% It's very cloudy.
     break
     default
       %send% %actor% The night sky is cloudless and vast.
@@ -303,8 +463,7 @@ elseif %cmd% == survey
     end
   end
   %send% %actor% Climate: %room.climate%
-  eval temp %%temperature.%room.temperature%%%
-  %send% %actor% Temperature: %temp%
+  %send% %actor% Temperature: %temperature.text(%room.temperature%)%
   %send% %actor% This location cannot be claimed.
 else
   return 0
@@ -312,9 +471,12 @@ end
 ~
 #12805
 Celestial Forge: Immortal controller~
-1 c 2 2
+1 c 2 5
 L j 12810
 L j 12850
+L j 12890
+L j 12920
+L j 12960
 cforge~
 if !%actor.is_immortal%
   %send% %actor% You lack the power to use this.
@@ -326,8 +488,14 @@ if goto /= %mode%
   * target handling
   if iron /= %arg2% || lodestone forge /= %arg2%
     set to_room %instance.nearest_rmt(12810)%
-  elseif imperium /= %arg2% || victory forge /= %arg2%
+  elseif imperium shard /= %arg2% || victory forge /= %arg2%
     set to_room %instance.nearest_rmt(12850)%
+  elseif eventide shard /= %arg2% || echo forge /= %arg2%
+    set to_room %instance.nearest_rmt(12890)%
+  elseif meteorite shard /= %arg2% || terminus forge /= %arg2%
+    set to_room %instance.nearest_rmt(12920)%
+  elseif celestial shard /= %arg2% || dawnforge /= %arg2%
+    set to_room %instance.nearest_rmt(12960)%
   else
     set to_room %instance.nearest_rmt(%arg2%)%
   end
@@ -343,7 +511,7 @@ if goto /= %mode%
     %force% %actor% look
   end
 else
-  %send% %actor% &&0Usage: cforge goto iron
+  %send% %actor% &&0Usage: cforge goto <iron | imperium | eventide | meteorite>
   %send% %actor% &&0       cforge goto <template vnum>
 end
 ~
@@ -435,6 +603,8 @@ if !%self.mob_flagged(SILENT)%
   remote no_silent %self.id%
   nop %self.add_mob_flag(SILENT)%
 end
+* brief wait for players to enter
+wait 0
 * Show the scripted text
 * tell story
 set pos 0
@@ -515,6 +685,22 @@ if %self.varexists(no_silent)%
   nop %self.remove_mob_flag(SILENT)%
 end
 ~
+#12808
+Celestial Forge: Lonely boss despawn~
+0 ab 20 0
+~
+if !%self.room.players_present%
+  * remove accessory item?
+  if %self.vnum% == 12897
+    set obj %self.room.contents(12918)%
+    if %obj%
+      %purge% %obj%
+    end
+  end
+  * and purge me
+  %purge% %self%
+end
+~
 #12810
 Celestial Forge: Mine attempt~
 2 c 0 0
@@ -523,7 +709,7 @@ mine~
 ~
 #12811
 Celestial Forge: Unique item exclusion~
-1 j 0 10
+1 j 0 20
 L c 12810
 L c 12814
 L c 12818
@@ -534,8 +720,18 @@ L c 12856
 L c 12860
 L c 12864
 L c 12868
+L c 12886
+L c 12890
+L c 12894
+L c 12898
+L c 12902
+L c 12920
+L c 12924
+L c 12928
+L c 12932
+L c 12936
 ~
-set ring_list 12810 12814 12818 12822 12826 12852 12856 12860 12864 12868
+set ring_list 12810 12814 12818 12822 12826 12852 12856 12860 12864 12868 12886 12890 12894 12898 12902 12920 12924 12928 12932 12936
 set ring_pos rfinger lfinger
 set pos_list
 *
@@ -722,7 +918,7 @@ nop %self.remove_mob_flag(NO-ATTACK)%
 ~
 #12817
 Celestial Forge: Arena return command~
-2 c 0 9
+2 c 0 17
 L c 9680
 L j 12811
 L j 12817
@@ -732,6 +928,14 @@ L j 12851
 L j 12857
 L j 12858
 L j 12859
+L j 12891
+L j 12897
+L j 12898
+L j 12899
+L j 12921
+L j 12927
+L j 12928
+L j 12929
 return~
 if %actor.fighting% || %actor.disabled%
   %send% %actor% You can't do that right now.
@@ -753,6 +957,18 @@ switch %room.template%
   case 12859
     set dest %instance.nearest_rmt(12851)%
     set mes gleaming flash of imperium
+  break
+  case 12897
+  case 12898
+  case 12899
+    set dest %instance.nearest_rmt(12891)%
+    set mes raucously loud flash of light
+  break
+  case 12927
+  case 12928
+  case 12929
+    set dest %instance.nearest_rmt(12921)%
+    set mes fiery roar
   break
 done
 if !%dest%
@@ -782,17 +998,26 @@ done
 ~
 #12818
 Celetsial Forge: Reset arena and spawn mob~
-2 bw 100 10
+2 bw 100 19
 L b 12817
 L b 12857
 L b 12858
 L b 12859
+L b 12897
+L b 12927
+L c 12918
 L j 12817
 L j 12818
 L j 12819
 L j 12857
 L j 12858
 L j 12859
+L j 12897
+L j 12898
+L j 12899
+L j 12927
+L j 12928
+L j 12929
 ~
 * setup
 switch %self.template%
@@ -809,6 +1034,20 @@ switch %self.template%
     set check_list 12857 12858 12859
     set mob 12857
     set mes The ground shakes as a fearsome War Machine rolls onto the battlefield, roaring like a furnace!
+  break
+  case 12897
+  case 12898
+  case 12899
+    set check_list 12897
+    set mob 12897
+    set mes A long, sustained peal cuts through the silence and the great wall around the forge rises from one end, opening its many-toothed mouth wide... That's no wall!
+  break
+  case 12927
+  case 12928
+  case 12929
+    set check_list 12927
+    set mob 12927
+    set mes The pink band across the sky rips open and the Lion of Time emerges, shimmering like the stars themselves, looming larger than life above you!
   break
   default
     halt
@@ -831,6 +1070,9 @@ if !%any%
       %send% %ch% &&wThe spirit of the forge flows through you and restores you!&&0
     end
     %restore% %ch%
+    if %ch.is_pc%
+      rdelete splat_%ch.id% %room.id%
+    end
     set ch %ch.next_in_room%
   done
 end
@@ -853,11 +1095,16 @@ if !%any%
     %echo% &&w%mes%&&0
   end
 end
+* check for object?
+if %mob% == 12897 && !%room.contents(12918)%
+  %load% obj 12918
+end
 ~
 #12819
 Celestial Forge: Challenge command to enter arena~
-2 c 0 9
+2 c 0 19
 L c 9680
+L c 12918
 L j 12811
 L j 12817
 L j 12818
@@ -866,6 +1113,15 @@ L j 12851
 L j 12857
 L j 12858
 L j 12859
+L j 12891
+L j 12897
+L j 12898
+L j 12899
+L j 12921
+L j 12927
+L j 12928
+L j 12929
+L j 12961
 challenge~
 * Tries to find an available arena to fight in
 * optional 'empty' arg gets you one with zero players
@@ -885,6 +1141,19 @@ switch %room.template%
   case 12851
     set room_list 12857 12858 12859
     set mes gleaming flash of imperium
+  break
+  case 12891
+    set room_list 12897 12898 12899
+    set mes tremendous flash of white light
+  break
+  case 12921
+    set room_list 12927 12928 12929
+    set mes tremendous fiery whirl
+  break
+  case 12961
+    * Dawnforge
+    %send% %actor% Awan of Light puts a starry hand on your shoulder and says, 'There is nothing to challenge here except yourself.'
+    halt
   break
 done
 eval empty %arg% == empty
@@ -936,11 +1205,13 @@ done
 ~
 #12820
 Celestial Forge: Loot once per day per person~
-0 f 100 4
+0 f 100 6
 L b 12817
 L b 12857
 L b 12858
 L b 12859
+L b 12897
+L b 12927
 ~
 eval min_level %self.minlevel% - 25
 set room %self.room%
@@ -958,6 +1229,16 @@ switch %self.vnum%
     set varname 12857_daily
     set loot a great imperium gear
     set death The War Machine collapses in a heap of broken wood and metal!
+  break
+  case 12897
+    set varname %self.vnum%_daily
+    set loot a diminished scale
+    set death Scales fly from the serragon as it collapses in a circle around Echo Forge!
+  break
+  case 12927
+    set varname %self.vnum%_daily
+    set loot an impact print
+    set death The Lion shimmers away into sparkles of light that fade into the sunset.
   break
   default
     set varname %self.vnum%_daily
@@ -998,6 +1279,13 @@ end
 if %any_ok% && %loot%
   %echo% &&w&&Z%loot% falls to the ground as ~%self% is defeated!&&0
 end
+* remove accessory item?
+if %self.vnum% == 12897
+  set obj %room.contents(12918)%
+  if %obj%
+    %purge% %obj%
+  end
+end
 ~
 #12821
 Celestial Forge: Single mob difficulty selector~
@@ -1010,6 +1298,10 @@ if !%arg%
 end
 if %self.fighting%
   %send% %actor% You can't change |%self% difficulty while &%self% is in combat!
+  return 1
+  halt
+elseif %self.disabled%
+  %send% %actor% You can't change |%self% difficulty right now.
   return 1
   halt
 end
@@ -1085,7 +1377,8 @@ dg_affect %self% !ATTACK on -1
 ~
 #12823
 Celestial Forge: Message when no-attack mob is attacked~
-0 B 0 0
+0 B 0 1
+L f 12823
 ~
 if %self.aff_flagged(!ATTACK)%
   %send% %actor% You need to choose a difficulty before you can fight ~%self%.
@@ -1135,13 +1428,23 @@ done
 ~
 #12833
 Celestial Forge: Buy mastery item~
-1 n 100 6
+1 n 100 16
+L c 12833
+L c 12872
+L c 12906
+L c 12940
 L o 12810
 L o 12811
 L o 12850
 L o 12851
+L o 12890
+L o 12891
+L o 12920
+L o 12921
 L w 5100
 L w 5101
+L w 5102
+L w 5103
 ~
 set actor %self.carried_by%
 if !%actor%
@@ -1159,6 +1462,18 @@ switch %self.vnum%
     set requires 12850
     set grants 12851
     set shard 5101
+    set refund 1000
+  break
+  case 12906
+    set requires 12890
+    set grants 12891
+    set shard 5102
+    set refund 1000
+  break
+  case 12940
+    set requires 12920
+    set grants 12921
+    set shard 5103
     set refund 1000
   break
   default
@@ -1190,12 +1505,20 @@ end
 ~
 #12834
 Shard companion: Buy shard companion~
-1 n 100 11
+1 n 100 19
 L b 12834
 L b 12844
+L b 12913
+L b 12947
 L c 12879
 L c 12880
 L c 12881
+L c 12913
+L c 12914
+L c 12915
+L c 12947
+L c 12948
+L c 12949
 L f 12837
 L w 5100
 L w 5101
@@ -1206,8 +1529,8 @@ L w 5104
 set cost 150
 *
 * list in order from highest to lowest, count=max
-set comp_list 12844 12834
-set comp_count 2
+set comp_list 12947 12913 12844 12834
+set comp_count 4
 *
 * init
 set tier 1
@@ -1252,6 +1575,36 @@ switch %self.vnum%
   case 12881
     set tier 2
     set new_vnum 12844
+    set upgrade caster
+  break
+  case 12913
+    set tier 3
+    set new_vnum 12913
+    set upgrade tank
+  break
+  case 12914
+    set tier 3
+    set new_vnum 12913
+    set upgrade dps
+  break
+  case 12915
+    set tier 3
+    set new_vnum 12913
+    set upgrade caster
+  break
+  case 12947
+    set tier 4
+    set new_vnum 12947
+    set upgrade tank
+  break
+  case 12948
+    set tier 4
+    set new_vnum 12947
+    set upgrade dps
+  break
+  case 12949
+    set tier 4
+    set new_vnum 12947
     set upgrade caster
   break
   default
@@ -1343,9 +1696,11 @@ end
 ~
 #12836
 Shard companion: Death trigger~
-0 ft 100 8
+0 ft 100 10
 L b 12834
 L b 12844
+L b 12913
+L b 12947
 L w 5100
 L w 5101
 L w 5102
@@ -1372,6 +1727,12 @@ switch %self.vnum%
   case 12844
     set tier 2
   break
+  case 12913
+    set tier 3
+  break
+  case 12947
+    set tier 4
+  break
 done
 if %tier%
   * refund shard type
@@ -1394,9 +1755,11 @@ nop %actor.remove_companion(%self.vnum%)%
 ~
 #12837
 Shard companion: Setup and update~
-0 bt 100 8
+0 bt 100 10
 L b 12834
 L b 12844
+L b 12913
+L b 12947
 L c 12808
 L w 12834
 L w 12835
@@ -1451,7 +1814,7 @@ end
 if %dps% >= 3
   nop %self.add_mob_flag(DPS)%
   if !%self.affect(12835)%
-    dg_affect #12835 %self% !DISARM on -1
+    dg_affect #12835 %self% NO-DISARM on -1
   end
 end
 * caster
@@ -1588,6 +1951,14 @@ switch %self.vnum%
     set metal imperium
     set desc_base The elemental gleams bright white, reflecting every stray beam of light that touches it.
   break
+  case 12913
+    set metal eventide
+    set desc_base The inky eventide surface of the elemental absorbs all light, reflecting only darkness.
+  break
+  case 12947
+    set metal meteoric
+    set desc_base Heavy, pock-marked meteors cluster to form the elemental's body.
+  break
   default
     set metal tin
     set desc_base The elemental looks to be made from old tin.
@@ -1635,12 +2006,14 @@ detach 12837 %self.id%
 ~
 #12838
 Celestial Forge: Set up training dummy with use~
-1 c 6 2
+1 c 6 4
 L b 12838
 L b 12873
+L b 12907
+L b 12941
 use~
 * List of dummies to exclude here
-set dummy_list 12838 12873
+set dummy_list 12838 12873 12907 12941
 *
 if %actor.obj_target(%arg.argument1%)% != %self%
   return 0
@@ -1656,6 +2029,9 @@ elseif %actor.position% != Standing
   halt
 elseif !%actor.canuseroom_guest(%room%)%
   %send% %actor% You don't have permission to set up training dummies here.
+  halt
+elseif %room.rmt_flagged(PEACEFUL)%
+  %send% %actor% You can't set up a training dummy here.
   halt
 end
 * check other dummies
@@ -1846,7 +2222,7 @@ elseif %move% == 2
     eval amount %self.level% / 10
     dg_affect #12831 @%self% %enemy% off silent
     dg_affect #12831 %enemy% DODGE -%amount% 30
-  elseif %dps% >= 3 && !%enemy.aff_flagged(!STUN)%
+  elseif %dps% >= 3 && !%enemy.aff_flagged(NO-STUN)%
     * stun
     dg_affect #12831 @%self% %enemy% off silent
     dg_affect #12831 %enemy% STUNNED on 5
@@ -1866,8 +2242,8 @@ elseif %move% == 3
   else
     eval duration 20
   end
-  dg_affect #12830 @%self% %enemy% off
-  dg_affect #12830 %enemy% SLOW on %durtion%
+  dg_affect #12830 @%self% %enemy% off silent
+  dg_affect #12830 %enemy% SLOW on %duration%
   %echo% &&Y~%self% unleashes a shard flurry at ~%enemy%, slowing ^%enemy% advance considerably!&&0
   if !%self.fighting%
     mkill %enemy%
@@ -2026,7 +2402,7 @@ end
 ~
 #12844
 Shard companion: Caster tier 3 auto-cast~
-0 k 67 1
+0 kt 67 1
 L w 12833
 ~
 * this ONLY appears on the Caster 3 module
@@ -2058,7 +2434,7 @@ end
 nop %actor.give_currency(%self.val0%,%self.val1%)%
 eval name %%currency.%self.val0%(%self.val1%)%%
 %send% %actor% You open @%self% and gain %self.val1% %name%!
-%echoaround% %actor% ~%actor5 opens @%self% and gains %self.val1% %name%!
+%echoaround% %actor% ~%actor% opens @%self% and gains %self.val1% %name%!
 %purge% %self%
 ~
 #12850
@@ -2325,7 +2701,7 @@ elseif %cmd% == tremor
       set next_ch %ch.next_in_room%
       if %self.is_enemy(%ch%)%
         if !%ch.var(did_scfjump)%
-          if %ch.aff_flagged(!STUN)%
+          if %ch.aff_flagged(NO-STUN)%
             %echo% &&wThe tremor knocks ~%ch% into a broken wagon!&&0
           else
             %echo% &&wThe tremor knocks ~%ch% to the ground!&&0
@@ -2449,5 +2825,481 @@ if %color% != none
   %mod% %self% longdesc A sharp-eyed hawk trails %color.ana% %color% banner from its talons.
   %mod% %self% lookdesc The lean, broad-winged hawk has feathers mottled in gleaming white and stark black. A light harness made of leather crosses its chest. In its talons, it clutches the %color% banner of %emp.name%.
 end
+~
+#12885
+Celestial Forge: Silent speech~
+2 c 0 0
+say ' whisper ask shout addict blonde boast brag chant curse fomo fubar greet love pray swear taunt vigor wtf~
+%send% %actor% You try to speak but no words come out.
+%echoaround% %actor% ~%actor%'s lips move but no sound comes out.
+~
+#12886
+Celestial Forge: Silent socials~
+2 c 0 0
+cackle chuckle giggle ijbol laugh lmao lol rofl applaud clap fart gasp groan hiccup hmm hum mmm moan mutter sigh sing whine bark burp cough disenchant dispel doh growl howl meow moo scream shriek snarl sneer sniff sniffle snore whistle yodel cry sob~
+* Replace certain actions
+set laugh_list cackle chuckle giggle ijbol laugh lmao lol rofl
+set clap_list applaud clap
+set nothing_list fart gasp groan hmm hum mmm moan mutter sigh whine
+set face_list bark burp cough disenchant dispel doh growl hiccup howl meow moo scream shriek sing snarl sneer sniff sniffle snore whistle yodel
+set sad_list cry sob
+* messaging
+if %laugh_list% ~= %cmd%
+  %send% %actor% You try, but end up looking like a maniac.
+  %echoaround% %actor% ~%actor% opens ^%actor% mouth widely and makes a crazy face.
+elseif %clap_list% ~= %cmd%
+  %send% %actor% You clap silently.
+  %echoaround% %actor% ~%actor% claps silently.
+elseif %nothing_list% ~= %cmd%
+  %send% %actor% You try, but nothing comes out.
+elseif %face_list% ~= %cmd%
+  %send% %actor% You try, but no sound comes out.
+  %echoaround% %actor% ~%actor% makes a strange face.
+elseif %sad_list% ~= %cmd%
+  %send% %actor% You weep quietly.
+  %echoaround% %actor% ~%actor% weeps quietly.
+else
+  return 0
+end
+~
+#12887
+Celestial Forge: Silent actions~
+2 c 0 0
+beg bonk cheer conjure pinch rite ritual snap summon~
+* targeting?
+set need_target beg bonk pinch
+if %need_target% ~= %cmd%
+  if !%arg%
+    %send% %actor% &&Z%cmd% whom?&&0
+    halt
+  end
+  set target %actor.char_target(%arg%)%
+  if !%target%
+    %send% %actor% No one by that name here.
+    halt
+  end
+end
+* various actions
+switch %cmd%
+  case beg
+    if %target.disabled% || %target.position% == Sleeping
+      %send% %actor% That's rather futile.
+    else
+      %send% %actor% You plead silently with ~%target%.
+      %send% %target% ~%actor% pleads silently with you.
+      %echoneither% %actor% %target% ~%actor% pleads silently with ~%target%.
+    end
+  break
+  case bonk
+    %send% %actor% You bonk ~%target% silently over the head.
+    %send% %target% ~%actor% bonks you silently over the head, but it still hurts!
+    %echoneither% %actor% %target% ~%actor% bonks ~%target% silently over the head.
+  break
+  case cheer
+    %send% %actor% You cheer silently but exuberantly!
+    %echoaround% %actor% ~%actor cheers silently but exuberantly!
+  break
+  case pinch
+    %send% %actor% You pinch ~%target%!
+    %send% %target% ~%actor% pinches you. Ouch!
+    %echoneither% %actor% %target% ~%actor% pinches ~%target%.
+  break
+  case snap
+    %send% %actor% You try to snap your fingers, but there's no sound.
+    %echoaround% %actor% ~%actor% swipes ^%actor% fist silently through the air.
+  break
+  case conjure
+    if shimmering anvil /= %arg% || anvil /= %arg%
+      %send% %actor% You try to speak but no words come out.
+      %send% %actor% ... and nothing happens.
+      %echoaround% %actor% ~%actor%'s lips move but no sound comes out.
+    else
+      return 0
+    end
+  break
+  case rite
+  case ritual
+    if sense life /= %arg%
+      %send% %actor% You try, but no sound comes out.
+      %send% %actor% ... and nothing happens.
+    else
+      return 0
+    end
+  break
+  case summon
+    if animals /= %arg%
+      %send% %actor% You try, but no sound comes out.
+      %send% %actor% ... and nothing happens.
+      %echoaround% %actor% ~%actor% makes a silly face.
+    else
+      return 0
+    end
+  break
+done
+~
+#12888
+Celestial Forge: Sign language for Echo Forge~
+0 c 0 1
+L o 12891
+signlang~
+if %actor% != %self%
+  halt
+end
+switch %arg%
+  * KAITO
+  case 1
+    set abil_msg ~%self% inclines ^%self% head and signs with ^%self% hands, 'Welcome.'
+    set non_msg ~%self% inclines ^%self% head and raises one hand.
+  break
+  case 2
+    set abil_msg ~%self% signs, 'It is an honor to meet you.'
+    set non_msg ~%self% gestures with one hand to ^%self% brow and the other pointed forward.
+  break
+  case 3
+    set abil_msg ~%self% signs, 'Our forge is your forge.'
+    set non_msg ~%self% gestures around the area, then points forward again.
+  break
+  case 4
+    set abil_msg ~%self% signs, 'But be cautious not to create a sound...'
+    set non_msg ~%self% holds a hand up to ^%self% throat and touches ^%self% thumb to ^%self% fingers...
+  break
+  case 5
+    set abil_msg ~%self% signs, 'For the Echo Serragon never sleeps.'
+    set non_msg ~%self% waves ^%self% hand through the air, palm-down, while turning in a full circle.
+  break
+  * IXCHEL
+  case 10
+    set abil_msg ~%self% signs with ^%self% hands, 'Oh! A new face.'
+    set non_msg ~%self% gestures around ^%self% face with ^%self% hands.
+  break
+  case 11
+    set abil_msg ~%self% signs, 'Didn't even hear you come in.'
+    set non_msg ~%self% shakes her head and points to one ear.
+  break
+  case 12
+    set abil_msg ~%self% signs, 'I'm hard at work for weapons to use against the beast.'
+    set non_msg ~%self% gestures toward the anvil with ^%self% hands, and then toward the great wall.
+  break
+  case 13
+    set abil_msg ~%self% signs, 'But I also have some inspiration for some rings, if you like.'
+    set non_msg ~%self% forms a circle with ^%self% fingers and then points to her head and then up at the night sky.
+  break
+  case 14
+    set abil_msg ~%self% looks up at you and signs with one hand, 'A bit busy here.'
+    set non_msg ~%self% looks up at you and makes a hammering motion with ^%self% free hand.
+  break
+  case 15
+    set abil_msg ~%self% signs, 'But feel free to look around.'
+    set non_msg ~%self% points to ^%self% eyes with ^%self% fingers, and then gestures around the area.
+  break
+  * SAOIRSE
+  case 20
+    set abil_msg ~%self% signs with ^%self% hands, 'I didn't realize we have a new guest.'
+    set non_msg ~%self% makes a quick gesture with ^%self% hands, points at you, then gestures again.
+  break
+  case 21
+    set abil_msg ~%self% signs, 'I have some great ideas for earrings...'
+    set non_msg ~%self% points to ^%self% forehead and then to both ^%self% ears, with ^%self% palm up.
+  break
+  case 22
+    set abil_msg ~%self% signs, 'If you're quick about it.'
+    set non_msg ~%self% makes a walking motion with one hand on the other, points at you, and then spins one finger in a circle.
+  break
+  case 23
+    set abil_msg ~%self% signs with one hand, 'Have you fought the beast yet?'
+    set non_msg ~%self% crosses ^%self% arms in an X, points at you, then points at the great wall.
+  break
+  * PERCY
+  case 30
+    set abil_msg ~%self% signs with ^%self% hands, 'I'm quite pleased to see you observing the Silence rule.'
+    set non_msg ~%self% holds ^%self% palm up, points forward, and then taps the top and bottom of ^%self% ear.
+  break
+  case 31
+    set abil_msg ~%self% signs, 'I'd hate for someone to alert the creature.'
+    set non_msg ~%self% touches ^%self% face and then flips ^%self% hand up and points toward the great wall.
+  break
+  case 32
+    set abil_msg ~%self% signs with ^%self% hands, 'I'm quite pleased you've returned.'
+    set non_msg ~%self% holds ^%self% palm upward and points forward.
+  break
+  case 33
+    set abil_msg ~%self% signs, 'There's still more availble for you here.'
+    set non_msg ~%self% gestures around the area, then folds ^%self% hands and opens them like a book, and then points forward.
+  break
+  * SOMSAK
+  case 40
+    set abil_msg ~%self% signs with ^%self% hands, 'Nice to see a new face. Are you here to work or shop?'
+    set non_msg ~%self% points forward and then waves ^%self% hand around ^%self% face. Then &%self% points to the anvils, then to ^%self% supplies.
+  break
+  case 41
+    set abil_msg ~%self% signs, 'I have lots of supplies if you need them.'
+    set non_msg ~%self% gestures around at all the supplies and then turns ^%self% palm upward and toward you.
+  break
+  case 42
+    set abil_msg ~%self% signs, 'No idea where it's all coming from.'
+    set non_msg ~%self% gestures around again, turns both palms down, then up.
+  break
+  case 43
+    set abil_msg ~%self% signs, 'Every time I turn around, there's more.'
+    set non_msg ~%self% taps *%self% on the shoulder, then gestures around again.
+  break
+  case 44
+    set abil_msg ~%self% signs with ^%self% hands, 'I'm quite pleased you've returned.'
+    set non_msg ~%self% holds ^%self% palm upward and points forward.
+  break
+  case 45
+    set abil_msg ~%self% signs, 'It's always better to keep armor in good repair.'
+    set non_msg ~%self% taps ^%self% forearm twice and then makes a knotting motion with ^%self% hands.
+  break
+  case 46
+    set abil_msg ~%self% signs, 'Nothing is too late to mend.'
+    set non_msg ~%self% gestures toward the sky from east to west and then drops the hand to ^%self% side before making a knotting motion again.
+  break
+done
+* check each person
+set ch %self.room.people%
+while %ch%
+  if %ch.is_pc%
+    if %ch.ability(12891)%
+      %send% %ch% %abil_msg%
+    else
+      %send% %ch% %non_msg%
+    end
+  end
+  set ch %ch.next_in_room%
+done
+~
+#12889
+Echo Forge: Additional room commands~
+2 c 0 7
+L j 12890
+L j 12891
+L j 12892
+L j 12893
+L j 12894
+L j 12895
+L w 12891
+ring unring~
+set echo_arenas 12897 12898 12899
+*
+if %room.template% == 12891
+  if !%arg% || bell /= %arg% || unrang /= %arg%
+    * unrung bell
+    if ring /= %cmd%
+      if %actor.cooldown(12891)%
+        %send% %actor% It's still swinging from the last ring. Wait a while before trying again.
+        halt
+      end
+      nop %actor.command_lag(ABILITY)%
+      %send% %actor% You give the bell a hard strike, which flashes with blinding light!
+      %echoaround% %actor% ~%actor% gives the bell a hard strike, which flashes with blinding light!
+      wait 1
+      %echo% The bell rocks over, gives another tremendous flash of light, and then settles into a gentle, rocking rhythm.
+      %at% i12890 %echo% There's a brilliant flash of light from below the platform.
+      %at% i12892 %echo% The bell flashes brilliantly from the center of Echo Forge.
+      %at% i12893 %echo% The bell flashes brilliantly from the center of Echo Forge.
+      %at% i12894 %echo% The bell flashes brilliantly from the center of Echo Forge.
+      %at% i12895 %echo% The bell flashes brilliantly from the center of Echo Forge.
+      nop %actor.set_cooldown(12891, 180)%
+    elseif unring /= %cmd%
+      nop %actor.command_lag(ABILITY)%
+      %send% %actor% It looks like someone else has already unrung the bell. You can't hear it at all.
+    else
+      * bad command
+      return 0
+    end
+  else
+    * bad arg
+    return 0
+  end
+elseif %echo_arenas% ~= %room.template%
+  if !%arg% || bell /= %arg% || unrang /= %arg%
+    * unrung bell
+    if ring /= %cmd%
+      if %actor.cooldown(12891)%
+        %send% %actor% It's still swinging from the last ring. Wait a while before trying again.
+        halt
+      end
+      nop %actor.command_lag(ABILITY)%
+      %send% %actor% You give the bell a hard strike...
+      %echoaround% %actor% ~%actor% gives the bell a hard strike...
+      wait 1
+      %echo% DONG! DONG! DONG! DONG!
+      nop %actor.set_cooldown(12891, 180)%
+    elseif unring /= %cmd%
+      nop %actor.command_lag(ABILITY)%
+      %send% %actor% You can't figure out how to unring the bell.
+    else
+      * bad command
+      return 0
+    end
+  else
+    * bad arg
+    return 0
+  end
+else
+  * no action for this room
+  return 0
+end
+~
+#12897
+Echo Serragon combat: Ring the Bell, Epic Screech, Echo of the Serragon~
+0 c 0 5
+L b 12898
+L w 9603
+L w 12817
+L w 12821
+L w 12897
+!bell !echo !epic~
+set targ %arg%
+set room %self.room%
+set diff %self.var(diff,1)%
+set cmd %cmd.substr(1)%
+if %actor% != %self% || !%targ% || %targ.id% == %self.id%
+  halt
+elseif %cmd% == echo
+  * Echo of the Serragon (summons echo mob)
+  set ch %room.people%
+  set count 0
+  while %ch%
+    if %ch.vnum% == 12898
+      eval count %count% + 1
+    end
+    set ch %ch.next_in_room%
+  done
+  * under limit?
+  if %count% < (%diff% * %diff%)
+    %echo% &&w**** The serragon rears back and shrieks into the darkness... and the darkness echoes back! ****&&0 (hit echo)
+    %load% mob 12898 ally
+  end
+  * short cooldown
+  nop %self.set_cooldown(9603,10)%
+elseif %cmd% == bell
+  * Ring the Bell (group duck)
+  scfight clear duck
+  %echo% &&wThe serragon's tail whips up behind you...&&0
+  if %diff% == 1
+    nop %self.add_mob_flag(NO-ATTACK)%
+  end
+  wait 3 s
+  %echo% &&w**** The serragon's tail is about to strike at the Unrang Bell... take cover! ****&&0 (duck)
+  set cycle 1
+  eval pain 50 * (%diff% * 2 - 1)
+  eval wait 10 - %diff%
+  while %cycle% <= %diff%
+    scfight setup duck all
+    wait %wait% s
+    %echo% &&wThe beast's tail strikes the bell and the tone is deafening!&&0
+    set ch %room.people%
+    while %ch%
+      set next_ch %ch.next_in_room%
+      if %self.is_enemy(%ch%)%
+        if !%ch.var(did_scfduck)%
+          %echo% &&wYour head feels like it's about to explode!&&0
+          dg_affect #12897 %ch% STUNNED on 10
+          %damage% %ch% %pain% direct
+        elseif %ch.is_pc%
+          %send% %ch% &&wYou take cover just in time!&&0
+          if %diff% == 1
+            dg_affect #12821 %ch% TO-HIT 25 20
+          end
+        end
+        if %cycle% < %diff%
+          %send% %ch% &&w**** It looks like it's about to hit the bell again! ****&&0 (duck)
+        end
+      end
+      set ch %next_ch%
+    done
+    scfight clear duck
+    eval cycle %cycle% + 1
+  done
+  wait 8 s
+elseif %cmd% == epic
+  * Epic Screech
+  scfight clear interrupt
+  %echo% &&w**** The serragon lifts its head up to the stars and takes a powerful breath... ****&&0 (interrupt)
+  if %diff% == 1
+    nop %self.add_mob_flag(NO-ATTACK)%
+  end
+  scfight setup interrupt all
+  wait 3 s
+  if %diff% > 2
+    set needed %room.players_present%
+  else
+    set needed 1
+  end
+  if %self.var(count_scfinterrupt,0)% < %needed%
+    %echo% &&w**** If ever there were a time to interrupt the serragon... ****&&0 (interrupt)
+  end
+  wait 3 s
+  if %self.var(count_scfinterrupt,0)% >= %needed%
+    %echo% &&wThe serragon is distracted as the Unrang Bell begins to ring!&&0
+    if %diff% == 1
+      dg_affect #12817 %self% HARD-STUNNED on 5
+    end
+    wait 30 s
+  else
+    %echo% &&wThe serragon's neck frills out as it unleashes its EPIC SCREECH!&&0
+    eval pain 100 * %diff%
+    %aoe% %pain% direct
+  end
+  scfight clear interrupt
+end
+nop %self.remove_mob_flag(NO-ATTACK)%
+~
+#12898
+Echo Forge: Echo of the serragon vicious buff~
+0 b 100 2
+L b 12897
+L w 12898
+~
+set room %self.room%
+set mommy %self.room.people(12897)%
+if !%mommy%
+  %echo% The echo fades into the distance.
+  %purge% %self%
+  halt
+elseif !%mommy.fighting%
+  %echo% The echo fades into the distance.
+  dg_affect #12898 @%self% %mommy% off
+  %purge% %self%
+  halt
+end
+*
+eval stack %self.var(stack,0)% + 1
+remote stack %self.id%
+*
+if %mommy.var(diff,1)% > 2
+  eval stack %stack% * 2
+end
+*
+dg_affect #12898 @%self% %mommy% off
+dg_affect #12898 @%self% %mommy% BONUS-PHYSICAL %stack% 360
+~
+#12899
+Echo Forge: Echo of the serragon easy-kill~
+0 l 90 2
+L b 12897
+L w 12898
+~
+wait 1
+*
+set mommy %self.room.people(12897)%
+if %mommy%
+  dg_affect #12898 @%self% %mommy% off
+end
+*
+%echo% The echo fades into the vast night sky.
+*
+set ch %self.room.people%
+while %ch%
+  set next_ch %ch.next_in_room%
+  if %ch% != %self% && %ch.fighting% == %self% && %mommy%
+    %force% %ch% hit echoserragon
+  end
+  set ch %next_ch%
+done
+*
+%purge% %self%
 ~
 $

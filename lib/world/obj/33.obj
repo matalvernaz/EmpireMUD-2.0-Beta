@@ -206,12 +206,12 @@ R
 4 5619 0
 S
 #3312
-flour sack~
-a sack of flour~
-A sack of flour is sitting on the ground.~
+flour sack wheat~
+a sack of wheat flour~
+A sack of wheat flour is sitting on the ground.~
 Flour is used to bake bread.
 ~
-3 lC a 0 0 6
+3 lC a 0 0 7
 0 0 0
 7 0
 C
@@ -504,9 +504,11 @@ A flaky blackberry tart has been left here.~
    This small tart is stuffed full with blackberries. Flaky, honey baked crust
 surround a thick blackberry filling. It should be quite delicious.
 ~
-6 gE a 0 0 5
+6 gE a 0 0 6
 24 0 0
 7 336
+C
+1 1
 M
 4
 You take a bite of $p and dribble a little blackberry juice down your chin.~
@@ -675,13 +677,16 @@ a vial of pepper spray~
 A glass vial of pepper spray has been left here.~
 This small glass vial is filled with a bright red fluid that sizzles slightly.
 ~
-26 0 a 0 0 14
+26 0 a 0 0 15
 0 15 -1
 8 0
 C
 125 125
 I 26 808 100.00 1  # DECAYS-TO: glass vial
 I 27 808 100.00 1  # CONSUMES-TO: glass vial
+M
+33
+This poison stacks a damage-over-time effect on the target with each hit.~
 R
 4 5130 0
 T 1273

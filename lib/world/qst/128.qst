@@ -65,7 +65,7 @@ your ground and faced it, and stories will be told of this long after you have
 gone.
    You can challenge the War Machine again as many times as you want by typing
 'challenge' or 'challenge empty' from Master Campwright Mateo's location at
-Vicstory Forge. However, it will only reward you with a shatterable imperium
+Victory Forge. However, it will only reward you with a shatterable imperium
 gear once per day.
    Remember, you can always return from the challenge by typing 'return' from
 the battlefield.
@@ -86,5 +86,50 @@ Z
 3 12858
 Z
 3 12859
+S
+#12897
+Echo Forge: What Lies Beyond~
+   Kaito bows to you and beckons you over. He inclines his head and signs with
+his hands, moving one hand along in a sinuous shape, the other hand showing
+great size. He pauses, taking a moment to collect himself. And then his eyes
+look past you, past the bell, to what lies beyond the light.
+   He gestures toward the great wall, turning around and around, halting with
+his hand pointed almost due south. He brings his hands together with fingers
+curled, hinging the hands together at the wrist and then clamping his fingers
+together like toothy jaws.
+   He makes the sign for 'big' again.
+   And then he points again to the wall.
+   ...
+   If you're ready to prove your mettle against the thing that lies beyond the
+light, type 'challenge' from Kaito the Measured's location at Echo Forge. If
+you want to ensure a private arena, type 'challenge empty'. You can return from
+the challenge by typing 'return' from the battlefield.
+~
+   The tremendous Echo Serragon slumps back into its familiar position as the
+wall around the forge. In the dark, it never sleeps. In the dark, it licks its
+wounds. In the dark, it waits.
+   You can challenge the Echo Serragon as many times as you want by typing
+'challenge' or 'challenge empty' from Kaito the Measured's location at Echo
+Forge. However, it will only reward you with a shatterable diminished scale
+once per day.
+   Remember, you can always return from the challenge by typing 'return' from
+the battlefield.
+~
+6 0 200 300 -1
+A
+1 12891
+R
+8 5102 100
+W+
+3 12897 0 1 -
+Defeat the Echo Serragon~
+Z
+1 12891
+Z
+3 12897
+Z
+3 12898
+Z
+3 12899
 S
 $

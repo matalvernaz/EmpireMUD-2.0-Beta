@@ -408,7 +408,7 @@ void olc_fullsearch_crop(char_data *ch, char *argument) {
 		}
 
 		// string search
-		if (*find_keywords && !multi_isname(find_keywords, GET_CROP_NAME(crop)) && !multi_isname(find_keywords, GET_CROP_TITLE(crop)) && !search_extra_descs(find_keywords, GET_CROP_EX_DESCS(crop)) && !search_custom_messages(find_keywords, GET_CROP_CUSTOM_MSGS(crop))) {
+		if (*find_keywords && !multi_isname(find_keywords, GET_CROP_NAME(crop)) && !multi_isname(find_keywords, GET_CROP_TITLE(crop)) && (!GET_CROP_NOTES(crop) || !multi_isname(find_keywords, GET_CROP_NOTES(crop))) && !search_extra_descs(find_keywords, GET_CROP_EX_DESCS(crop)) && !search_custom_messages(find_keywords, GET_CROP_CUSTOM_MSGS(crop))) {
 			// check icons too
 			match = FALSE;
 			LL_FOREACH(GET_CROP_ICONS(crop), icon) {
@@ -525,6 +525,9 @@ void save_olc_crop(descriptor_data *desc) {
 	if (GET_CROP_TITLE(proto)) {
 		free(GET_CROP_TITLE(proto));
 	}
+	if (GET_CROP_NOTES(proto)) {
+		free(GET_CROP_NOTES(proto));
+	}
 	free_custom_messages(GET_CROP_CUSTOM_MSGS(proto));
 	free_extra_descs(&GET_CROP_EX_DESCS(proto));
 	while ((spawn = GET_CROP_SPAWNS(proto))) {
@@ -546,6 +549,10 @@ void save_olc_crop(descriptor_data *desc) {
 			free(GET_CROP_TITLE(cp));
 		}
 		GET_CROP_TITLE(cp) = str_dup(default_crop_title);
+	}
+	if (GET_CROP_NOTES(cp) && !*GET_CROP_NOTES(cp)) {
+		free(GET_CROP_NOTES(cp));
+		GET_CROP_NOTES(cp) = NULL;
 	}
 
 	// save data back over the proto-type
@@ -578,6 +585,7 @@ crop_data *setup_olc_crop(crop_data *input) {
 		// copy things that are pointers
 		GET_CROP_NAME(new) = GET_CROP_NAME(input) ? str_dup(GET_CROP_NAME(input)) : NULL;
 		GET_CROP_TITLE(new) = GET_CROP_TITLE(input) ? str_dup(GET_CROP_TITLE(input)) : NULL;
+		GET_CROP_NOTES(new) = GET_CROP_NOTES(input) ? str_dup(GET_CROP_NOTES(input)) : NULL;
 		
 		// copy customs
 		GET_CROP_CUSTOM_MSGS(new) = copy_custom_messages(GET_CROP_CUSTOM_MSGS(input));
@@ -641,6 +649,7 @@ void olc_show_crop(char_data *ch) {
 	struct custom_message *ocm;
 	struct spawn_info *spawn;
 	int count;
+	struct icon_data *icon_iter;
 	
 	if (!cp) {
 		return;
@@ -650,9 +659,12 @@ void olc_show_crop(char_data *ch) {
 	build_page_display(ch, "<%sname\t0> %s", OLC_LABEL_STR(GET_CROP_NAME(cp), default_crop_name), NULLSAFE(GET_CROP_NAME(cp)));
 	build_page_display(ch, "<%stitle\t0> %s", OLC_LABEL_STR(GET_CROP_TITLE(cp), default_crop_title), NULLSAFE(GET_CROP_TITLE(cp)));
 	build_page_display(ch, "<%smapout\t0> %s", OLC_LABEL_VAL(GET_CROP_MAPOUT(cp), 0), mapout_color_names[GET_CROP_MAPOUT(cp)]);
-
-	build_page_display(ch, "<%sicons\t0>", OLC_LABEL_PTR(GET_CROP_ICONS(cp)));
-	show_icons_display(ch, GET_CROP_ICONS(cp), FALSE);
+	
+	LL_COUNT(GET_CROP_ICONS(cp), icon_iter, count);
+	build_page_display(ch, "<%sicons\t0> %d set", OLC_LABEL_PTR(GET_CROP_ICONS(cp)), count);
+	if (!PRF_FLAGGED(ch, PRF_SCREEN_READER)) {
+		show_icons_display(ch, GET_CROP_ICONS(cp), FALSE);
+	}
 	
 	ordered_sprintbit(GET_CROP_CLIMATE(cp), climate_flags, climate_flags_order, FALSE, lbuf);
 	build_page_display(ch, "<%sclimate\t0> %s", OLC_LABEL_VAL(GET_CROP_CLIMATE(cp), NOBITS), lbuf);
@@ -690,6 +702,8 @@ void olc_show_crop(char_data *ch) {
 		}
 		build_page_display(ch, " %d spawn%s set", count, PLURAL(count));
 	}
+	
+	build_page_display(ch, "<%snotes\t0>\r\n%s", OLC_LABEL_PTR(GET_CROP_NOTES(cp)), NULLSAFE(GET_CROP_NOTES(cp)));
 		
 	send_page_display(ch);
 }
@@ -753,6 +767,19 @@ OLC_MODULE(cropedit_name) {
 	crop_data *cp = GET_OLC_CROP(ch->desc);
 	olc_process_string(ch, argument, "name", &GET_CROP_NAME(cp));
 	*GET_CROP_NAME(cp) = LOWER(*GET_CROP_NAME(cp));
+}
+
+
+OLC_MODULE(cropedit_notes) {
+	crop_data *cp = GET_OLC_CROP(ch->desc);
+
+	if (ch->desc->str) {
+		msg_to_char(ch, "You are already editing a string.\r\n");
+	}
+	else {
+		sprintf(buf, "notes for %s", GET_CROP_NAME(cp));
+		start_string_editor(ch->desc, buf, &GET_CROP_NOTES(cp), MAX_NOTES, TRUE);
+	}
 }
 
 

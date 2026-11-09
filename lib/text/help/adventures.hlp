@@ -11,6 +11,65 @@ in about an hour.
 
 See also: ADVENTURE
 #
+CELESTIALFORGE "CELESTIAL FORGE" SHATTER SHARD SHARDS "LODESTONE FORGE" "VICTORY FORGE" "ECHO FORGE" "TERMINUS FORGE" DAWNFORGE "THE DAWNFORGE" "IRON SHARDS" "IMPERIUM SHARDS" "EVENTIDE SHARDS" "METEORITE SHARDS" "CELESTIAL SHARDS"
+
+[FF]  Celestial Forge  (Renown goal)
+
+Commands:  shatter <item to destroy>
+           donate <shard type>
+Fame:  5
+Temperature:  always comfortable
+
+Your celestial forge is a place not only to forge gear, but to destroy gear you
+no longer need and recycle it into shards. The number and type of shards you
+get are based on the level and quality of the item.
+
+You can see how many shards you have by typing 'coins'.
+
+Each celestial forge in your empire is also linked to the divine celestial
+forges that sell crafting recipes and items in exchange for shards. To reach
+these forges, visit the Starsmith at your celestial forge and 'donate' a shard
+of any type. This will take you to the forge that matches the shard:
+
+  Lodestone Forge:  iron shards  (level 1-100)
+  Victory Forge:  imperium shards  (level 101-200)
+  Echo Forge:  eventide shards  (level 201-300)
+  Terminus Forge:  meteorite shards  (level 301-400)
+  The Dawnforge:  celestial shards  (level 401+)
+
+To leave a celestial forge, type 'return' in its entry area. This will open a
+portal or teleport you out, depending upon how you entered.
+
+Each celestial forge also has a daily boss challenge. From the center of the
+forge, type 'challenge' to teleport to the first available arena where nobody
+is fighting, or 'challenge empty' to teleport to the first available arena with
+no players in it. Your followers come with you. Once the fight begins, no other
+players may join. Type 'return' to leave the challenge arena.
+
+The rings you forge from this adventure are unique: you may only wear 1
+celestial forge ring at a time, regardless of tier, level, or type.
+
+See also: CELESTIAL CRAFTING, CURRENCY
+#
+"CELESTIAL CRAFTING" "LODESTONE FORGING" "LODESTONE MASTERY" "VICTORIOUS SMITHING" "VICTORIOUS MASTERY" "RESONANT LIGHTCRAFT" "RESONANT MASTERY" "IMPACT FORGING" "IMPACT MASTERY"
+
+Each celestial forge has its own crafting ability, which you receive
+automatically if you visit that forge with Trade skill 76 or higher. Purchase
+training for each forge's mastery ability from one of the shops in that forge.
+
+Crafting celestial forge items will require a special component which you must
+purchase from the appropriate forge:
+
+  Lodestone Forging (level 1-100): requires a small lodestone
+  Victorious Smithing (level 100-200): requires a spark of victory
+  Resonant Lightcraft (level 200-300): requires a mote of harmony
+  Impact Forging (level 300-400): requires an unfallen meteor
+
+The rings you forge from this adventure are unique: you may only wear 1
+celestial forge ring at a time, regardless of tier, level, or type.
+
+See also: CELESTIAL FORGE
+#
 COLOSSUS "CLOCKWORK COLOSSUS" "CLOCK WORK COLOSSUS"
 
 Clockwork Colossus (level 100-200 adventure)
@@ -87,6 +146,10 @@ Dragon buildings:
   dragonstatue (dragonseye ruby): A new type of statue (Dragonslayer).
   dragonlibrary (dragonquill pen): A library with an alchemy lab inside.
 
+You can fight this adventure on any difficulty (normal, hard, group, boss) but
+most of the loot requires you to complete it at the original difficulty of
+"boss" or higher.
+
 See also: ADVENTURE
 #
 "THE CURSED CHALICE OF MILL MANOR" "CURSED CHALICE OF MILL MANOR" "MILL MANOR"
@@ -114,6 +177,10 @@ Start the apprentice's quests with 'start all'. There is one quest per
 elemental, and you can repeat these quests if you wait at least an hour after
 finishing them. You can purchase rewards from the apprentice with the 'list'
 and 'buy' commands. Hint: If you're a thief, try pickpocketing the apprentice.
+
+Each adventure has its own goals and activities. For this one, use the
+'where elemental' command to find and fight each elemental, pick up its item,
+and return them to the apprentice.
 
 The sorcerer's apprentice sells:
   a sorcerous biscuit - food
@@ -145,6 +212,10 @@ mangled, and downright tattered gear that the fur dragon has collected from
 other adventurers, you can create crafting patterns for those same items.
 Studying consumes at least one of the items, depending on the item's quality.
 
+You can fight this dragon on any difficulty (normal, hard, group, boss) but
+some of the loot requires you to complete it at the original difficulty of
+"hard" or higher. Studying only works with "hard" or higher, as well.
+
 See also: ADVENTURE
 #
 GIANT GIANT! "HILL GIANT" "RIVER GIANT" "DUNE GIANT"
@@ -153,6 +224,10 @@ Giant! (level 100-175 adventure)
 
 A giant is on the loose! These giants roam along mountains, riverbanks, and
 deserts.
+
+You can fight this giant on any difficulty (normal, hard, group, boss) but the
+valuable loot requires you to complete it at the original difficulty of "hard"
+or higher.
 
 See also: ADVENTURE
 #
@@ -197,10 +272,14 @@ See also: ADVENTURE
 
 Goblin Mines (level 1-25 adventure)
 
-   The goblins have fled the mines and something tells you it's not good.
+The goblins have fled the mines and something tells you it's not good.
 Venture into the goblin mines and see what sends even goblins running for their
 lives! And maybe if you can find those goblins, they'll be willing to reward
 you for clearing out the mine.
+
+Each adventure has its own goals and activities. In Goblin Mines, fight
+creatures inside the mine. Then, try 'where goblin' to find one of the goblins
+outside to trade with.
 
 You can buy items from four goblins who have fled the mines. If you don't have
 any coins, try selling spider parts to Miner Nynar or spider meat to Miner
@@ -211,7 +290,7 @@ Miner Meena sells a goblin pick (for mining).
 Miner Hanx sells a goblin raft (drag it to the shore and sit on it to sail).
 Blacklung, Goblin Foreman sells a goblin coffin (temporary, single-use tomb).
 
-See also: ADVENTURE
+See also: ADVENTURE, WHERE
 #
 "GOBLIN OUTPOST" "SEWER: GOBLIN OUTPOST" "THE SEWER: GOBLIN OUTPOST" "GOBLIN SEWERS"
 
@@ -394,7 +473,7 @@ The guildleader sells:
 
 See also: ADVENTURE
 #
-HALLOWEEN CANDY "HALLOWEEN CANDY" "HALLOWEEN OF THE DEAD"
+HALLOWEEN CANDY "HALLOWEEN CANDY" "HALLOWEEN OF THE DEAD" "HALLOWEEN EVENT" "UNEARTHLY MANOR" SLAUGHTERHOUSE "PUMPKIN COACH" PUMPKINS 
 
 The Halloween of the Dead event is available during the month of October
 (ending November 2) and offers daily quests to earn fun rewards. Some quests
@@ -404,6 +483,7 @@ You can start all the quests from halloween candy items that you find by
 killing mobs anywhere in the world. 
 
 Some of the rewards include:
+ marigold, chrysanthemum, or black rose - drop these at any tomb for a buff
  bunch of pumpkin seeds - try planting them
  pumpkin coach spell - make a new vehicle from a pumpkin
  costume kit - sew fun costumes
@@ -416,13 +496,14 @@ Some of the rewards include:
  vial of swirling ectoplasm - upgrade some of the reward items
  vial of magi-genic ooze - upgrade one of your Halloween mounts to fly
  reddened butcher's block - builds a slaughterhouse
+ Unearthly Manor - a large house
 
 Game admins: You must enable global 18802 by removing its IN-DEV flag to turn
 on the Halloween candy drops, and disable that global when the holiday is over.
 Start event 18800 at the beginning of October 1; it runs 33 days (to end at the
 end of November 2).
 
-See also: ADVENTURE
+See also: EVENT
 #
 "HAMLET OF THE UNDEAD" "BURNING HAMLET"
 
@@ -442,6 +523,24 @@ Magiterranean: The Hidden Garden (level 15+ adventure)
 The Hidden Garden appears as a hole in an Oasis Garden or Shady Garden. You
 must complete some tasks for the gardener to get into the hidden garden, which
 has new crops.
+
+See also: ADVENTURE
+#
+"HIGH TEMPLE: LONG-LOST LABYRINTH" "LONG-LOST LABYRINTH" "LONG LOST LABYRINTH" LABYRINTH
+
+High Temple: Long-Lost Labyrinth (level 250-350 adventure)
+
+   A small tremor has opened a narrow opening in the foundation of the temple.
+Something lies below. It seems the temple was built upon an older structure,
+long forgotten, unexplored and unknown. It certainly predates the empire. But
+who built it -- and why -- are lost to time. With any luck, it has been sealed
+so long that no one has looted it. Yet.
+
+Craftable gear from this adventure scales from 250 to 375, except certain
+items that are available from 125 to 375.
+
+Certain abilities such as 'architect' and 'cleanse' have additional uses in
+this adventure.
 
 See also: ADVENTURE
 #
@@ -540,6 +639,10 @@ A flame dragon is burning the countryside! The only way to stop it is to slay
 the dragon. The scorched land will regrow over time, though it may be possible
 to speed it up with magic.
 
+You can fight this dragon on any difficulty (normal, hard, group, boss) but
+most of the loot requires you to complete it at the original difficulty of
+"hard" or higher.
+
 See also: ADVENTURE
 #
 "MOLTEN FIEND" "MOUNTAIN VALLEY: MOLTEN FIEND" "MOUNTAIN VALLEY MOLTEN FIEND"
@@ -570,7 +673,8 @@ Gear sets:
   Melee: Flametalon, igneous, pyroclastic, flame-wreathed
   Tank: magma-forged, volcanic fortress, flowing lava, diabolic crown
   Other: fiendhorn bladed bow (ranged), flame-embroidered pouch (magic),
-     basalt pouch (tank/pvp/solo), mantle of flames (misc)
+     molten pouch (melee/caster), basalt pouch (tank/pvp/solo),
+     mantle of flames (misc)
 
 See also: ADVENTURE
 #
@@ -937,7 +1041,7 @@ This mini-venture can be found in jungles and swamps. It doesn't appear on
 #
 "SWAMP HAG" "THE SWAMP HAG"
 
-The Swamp Hag (level 100-150 adventure)
+The Swamp Hag (level 125-225 adventure)
 
 This strange, raised hut towers over the swamp. What sort of person would be
 at home in the swamp?
@@ -985,9 +1089,15 @@ See also: ADVENTURE, BURN
 
 Trade Tutorial: Museum of Early Man (level 1-50 adventure)
 
-Find this adventure in a cave on the newbie island using the 'nearby museum'
-command. In this adventure, you can learn to do quests, gather resources, and
-craft basic tools.
+This tutorial has quests for people who have the Trade skill under level 50.
+If you don't have Trade at all, look for the wandering museum crier and start
+his intro quest. You can type "nearby Museum" to find the museum.
+
+Each adventure has its own goals and activities. In this one, visit the
+museum and craft items to complete a series of quests.
+
+This adventure appears on a mountain tile, facing flat terrain. You may have to
+go around a mountain to find the entrance.
 
 See also: ADVENTURE, NEARBY, QUEST
 #
@@ -1041,6 +1151,10 @@ A muck dragon is roamings the swamps. These dragons are large, slimy, and
 particularly vicious. Fortunately, they never leave the water. Perhaps if you
 slay the dragon, you can take its riches for yourself.
 
+You can fight this dragon on any difficulty (normal, hard, group, boss) but
+the most valuable loot requires you to complete it at the original difficulty
+of "group" or higher.
+
 See also: ADVENTURE
 #
 VOLCANO
@@ -1059,15 +1173,33 @@ Wandering Dragon (level 125-175 adventure)
 These dragons -- including the wandering wyvern, bull dragon, emerald dragon,
 and dragon guardian -- wander far and wide.
 
+You can fight these dragons on any difficulty (normal, hard, group, boss) but
+most of the loot requires you to complete it at the original difficulty of
+"hard" or higher.
+
 See also: ADVENTURE
 #
-"WINTER WONDERLAND"
+"WINTER WONDERLAND" "WINTER EVENT" SLEIGH "ICE PALACE" NORDLYS "GOOSE FARM"
 
 Winter Wonderland (event/adventure)
 
 This event runs from December 1 to January 6; type 'event' during that time to
 see more details. While it's running, you can find small adventure portals
 by typing 'nearby Winter Wonderland' to get quests for the event.
+
+Some of the rewards include:
+ chocolate coins, snowball cookies, or thumbprint cookies - buff food
+ hideous sweater - a great new outfit
+ sleigh schematic - build a new vehicle
+ bottomless gift sack - a large pack
+ frozen ice stone - build a grand ice palace
+ reindeer - new mounts
+ design for a goose farm - keep geese in your city
+ silver elfish omni-tool - a very useful thing
+ basket of chestnuts - try planting them
+ dreidel - give it a spin
+ shimmering magewood jar - contains a magical forest
+ snowglobe of home - better than a hestian trinket
 
 See also: ADVENTURE, EVENT
 #

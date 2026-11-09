@@ -283,7 +283,7 @@ end
 %purge% %self%
 ~
 #605
-Enchanted Forests: Start progress goals~
+Enchanted Forests: Start progress goals on get~
 1 g 100 2
 L y 4010
 L y 4030
@@ -292,6 +292,20 @@ return 1
 if %actor.is_pc% && %actor.empire%
   nop %actor.empire.start_progress(4010)%
   nop %actor.empire.start_progress(4030)%
+end
+~
+#606
+Enchanted Forests: Start progress goals on load~
+1 n 100 2
+L y 4010
+L y 4030
+~
+set actor %self.carried_by%
+if %actor%
+  if %actor.is_pc% && %actor.empire%
+    nop %actor.empire.start_progress(4010)%
+    nop %actor.empire.start_progress(4030)%
+  end
 end
 ~
 #610
@@ -498,7 +512,8 @@ done
 ~
 #617
 Free genie load~
-0 n 100 0
+0 n 100 1
+L f 617
 ~
 wait 1
 * only allows 1 copy of the genie here

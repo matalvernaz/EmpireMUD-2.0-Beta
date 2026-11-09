@@ -215,7 +215,7 @@ void change_terrain(room_data *room, sector_vnum sect, sector_vnum base_sect) {
 	
 	// need to determine a crop?
 	if (!new_crop && SECT_FLAGGED(st, SECTF_HAS_CROP_DATA) && !ROOM_CROP(room)) {
-		new_crop = get_potential_crop_for_location(room, NOTHING);
+		new_crop = get_potential_crop_for_location(room, NOTHING, NULL);
 		if (!new_crop) {
 			new_crop = crop_table;
 		}
@@ -840,7 +840,6 @@ GLB_VALIDATOR(validate_global_mine_data) {
 GLB_FUNCTION(run_global_mine_data) {
 	struct glb_room_emp_bean *data = (struct glb_room_emp_bean*)other_data;
 	empire_data *emp = (data ? data->empire : NULL);
-	room_data *room = (data ? data->room : NULL);
 	
 	if (!data || !room) {
 		return FALSE;	// no work
@@ -888,7 +887,7 @@ void init_mine(room_data *room, char_data *ch, empire_data *emp) {
 	CREATE(data, struct glb_room_emp_bean, 1);
 	data->empire = emp;
 	data->room = room;
-	run_globals(GLOBAL_MINE_DATA, run_global_mine_data, FALSE, GET_SECT_FLAGS(BASE_SECT(room)), ch, (GET_ROOM_TEMPLATE(room) ? get_adventure_for_vnum(GET_RMT_VNUM(GET_ROOM_TEMPLATE(room))) : NULL), ch ? GET_COMPUTED_LEVEL(ch) : 0, validate_global_mine_data, data);
+	run_globals(GLOBAL_MINE_DATA, run_global_mine_data, FALSE, GET_SECT_FLAGS(BASE_SECT(room)), ch, room, (GET_ROOM_TEMPLATE(room) ? get_adventure_for_vnum(GET_RMT_VNUM(GET_ROOM_TEMPLATE(room))) : NULL), ch ? GET_COMPUTED_LEVEL(ch) : 0, validate_global_mine_data, data);
 	free(data);
 }
 
@@ -1471,18 +1470,19 @@ void annual_update_map_tile(struct map_data *tile) {
 void annual_update_vehicle(vehicle_data *veh) {
 	char *msg;
 	
-	if (VEH_OWNER(veh) && EMPIRE_ADMIN_FLAGGED(VEH_OWNER(veh), EADM_NO_DECAY)) {
-		return;	// skip empire's vehicles
-	}
-	
 	// ensure a save
 	request_vehicle_save_in_world(veh);
 	
 	// non-damage stuff:
 	annual_update_depletions(&VEH_DEPLETION(veh));
 	
+	// admin skip?
+	if (VEH_OWNER(veh) && EMPIRE_ADMIN_FLAGGED(VEH_OWNER(veh), EADM_NO_DECAY)) {
+		return;	// skip empire's vehicles
+	}
+	
 	// does not take annual damage (unless incomplete)
-	if (!VEH_REGULAR_MAINTENANCE(veh) && VEH_IS_COMPLETE(veh)) {
+	if (!VEH_REGULAR_MAINTENANCE(veh) && VEH_IS_COMPLETE(veh) && !VEH_FLAGGED(veh, VEH_IS_RUINS)) {
 		// check if it's abandoned furniture: no owner, unowned room, no instance id, not in an adventure, no players here
 		if (!VEH_OWNER(veh) && VEH_INSTANCE_ID(veh) != NOTHING && IN_ROOM(veh) && !ROOM_OWNER(IN_ROOM(veh)) && !IS_ADVENTURE_ROOM(IN_ROOM(veh)) && !any_players_in_room(IN_ROOM(veh))) {
 			// random chance of decay
@@ -1495,7 +1495,7 @@ void annual_update_vehicle(vehicle_data *veh) {
 	}
 	
 	// prepare to decay (ruins have special handling here)
-	if (VEH_FLAGGED(veh, VEH_IS_RUINS)) {
+	if (VEH_FLAGGED(veh, VEH_IS_RUINS) && !VEH_OWNER(veh)) {
 		// chance of ruining ruins: roughly 2 real years for average chance for ruins to be gone
 		if (!number(0, 89)) {
 			msg = veh_get_custom_message(veh, VEH_CUSTOM_RUINS_TO_ROOM);
@@ -1634,7 +1634,7 @@ int naturalize_newbie_island(struct map_data *tile, bool do_unclaim) {
 		
 		if (SECT_FLAGGED(tile->natural_sector, SECTF_HAS_CROP_DATA)) {
 			room = real_room(tile->vnum);	// need it loaded after all
-			new_crop = get_potential_crop_for_location(room, NOTHING);
+			new_crop = get_potential_crop_for_location(room, NOTHING, NULL);
 			set_crop_type(room, new_crop ? new_crop : crop_table);
 		}
 		else {
@@ -3105,8 +3105,8 @@ void generate_island_descriptions(void) {
 	
 	// now count terrains
 	LL_FOREACH(land_map, map) {
-		if (map->base_sector && SECT_FLAGGED(map->base_sector, SECTF_OCEAN)) {
-			continue;	// skip ocean-flagged tiles
+		if (map->base_sector && SECT_FLAGGED(map->base_sector, SECTF_OCEAN | SECTF_HIDE_ON_ISLAND_DESCRIPTION)) {
+			continue;	// skip ocean- or hide-flagged tiles
 		}
 		
 		// find island
@@ -3514,15 +3514,21 @@ int get_main_island(empire_data *emp) {
 * 
 * @param room_data *location The location to pick a crop for.
 * @param int must_have_interact Optional: Only pick crops with this interaction (pass NOTHING to skip).
+* @param char *build_string Optional: Will list all available crops here in the string (must hold MAX_STRING_LENGTH).
 * @return crop_data* Any crop, or NULL if it can't find one.
 */
-crop_data *get_potential_crop_for_location(room_data *location, int must_have_interact) {
+crop_data *get_potential_crop_for_location(room_data *location, int must_have_interact, char *build_string) {
 	int x = X_COORD(location), y = Y_COORD(location);
 	bool water = find_flagged_sect_within_distance_from_room(location, SECTF_FRESH_WATER, NOBITS, config_get_int("water_crop_distance"));
 	struct island_info *isle = NULL;
 	crop_data *found, *crop, *next_crop;
 	int num_found = 0;
 	bitvector_t climate;
+	
+	// init build_string?
+	if (build_string) {
+		*build_string = '\0';
+	}
 	
 	// small amount of random so the edges of the crops are less linear on the map
 	x += number(-10, 10);
@@ -3565,6 +3571,11 @@ crop_data *get_potential_crop_for_location(room_data *location, int must_have_in
 			if (CROP_FLAGGED(crop, CROPF_NEWBIE_ONLY) && (!isle || !IS_SET(isle->flags, ISLE_NEWBIE))) {
 				continue;
 			}
+		}
+		
+		// valid: store name if requested
+		if (build_string) {
+			safe_snprintf(build_string + strlen(build_string), MAX_STRING_LENGTH - strlen(build_string), "%s%s", (*build_string ? ", " : ""), GET_CROP_NAME(crop));
 		}
 		
 		// valid: choose at random
@@ -3725,7 +3736,7 @@ INTERACTION_FUNC(ruin_building_to_building_interaction) {
 	}
 	
 	// abandon first -- this will take care of accessory rooms, too
-	if (!old_bld || !BLD_FLAGGED(old_bld, BLD_NO_ABANDON_WHEN_RUINED)) {
+	if ((!old_bld || !BLD_FLAGGED(old_bld, BLD_NO_ABANDON_WHEN_RUINED)) && ROOM_OWNER(inter_room) && !EMPIRE_ADMIN_FLAGGED(ROOM_OWNER(inter_room), EADM_NO_DECAY)) {
 		abandon_room(inter_room);
 	}
 	disassociate_building(inter_room);
@@ -3736,7 +3747,7 @@ INTERACTION_FUNC(ruin_building_to_building_interaction) {
 	
 	// remove any unclaimed/empty vehicles (like furniture) -- those crumble with the building
 	DL_FOREACH_SAFE2(ROOM_VEHICLES(inter_room), veh_iter, next_veh, next_in_room) {
-		if (!VEH_OWNER(veh_iter) && !VEH_CONTAINS(veh_iter)) {
+		if (VEH_PURGES_WHEN_TILE_RUINS(veh_iter)) {
 			extract_vehicle(veh_iter);
 		}
 	}
@@ -3854,7 +3865,7 @@ INTERACTION_FUNC(ruin_building_to_vehicle_interaction) {
 	}
 	
 	// abandon first -- this will take care of accessory rooms, too
-	if (!old_bld || !BLD_FLAGGED(old_bld, BLD_NO_ABANDON_WHEN_RUINED)) {
+	if ((!old_bld || !BLD_FLAGGED(old_bld, BLD_NO_ABANDON_WHEN_RUINED)) && ROOM_OWNER(inter_room) && !EMPIRE_ADMIN_FLAGGED(ROOM_OWNER(inter_room), EADM_NO_DECAY)) {
 		abandon_room(inter_room);
 	}
 	disassociate_building(inter_room);
@@ -3865,7 +3876,7 @@ INTERACTION_FUNC(ruin_building_to_vehicle_interaction) {
 	
 	// remove any unclaimed/empty vehicles (like furniture) -- those crumble with the building
 	DL_FOREACH_SAFE2(ROOM_VEHICLES(inter_room), veh_iter, next_veh, next_in_room) {
-		if (veh_iter != ruin && !VEH_OWNER(veh_iter) && !VEH_CONTAINS(veh_iter)) {
+		if (veh_iter != ruin && VEH_PURGES_WHEN_TILE_RUINS(veh_iter)) {
 			extract_vehicle(veh_iter);
 		}
 	}
@@ -3939,7 +3950,7 @@ void ruin_one_building(room_data *room) {
 	}
 	else {	// failed to run a ruins interaction	
 		// abandon first -- this will take care of accessory rooms, too
-		if (!bld || !BLD_FLAGGED(bld, BLD_NO_ABANDON_WHEN_RUINED)) {
+		if ((!bld || !BLD_FLAGGED(bld, BLD_NO_ABANDON_WHEN_RUINED)) && ROOM_OWNER(room) && !EMPIRE_ADMIN_FLAGGED(ROOM_OWNER(room), EADM_NO_DECAY)) {
 			abandon_room(room);
 		}
 		disassociate_building(room);
@@ -3948,9 +3959,9 @@ void ruin_one_building(room_data *room) {
 			act("The building around you crumbles to ruin!", FALSE, ROOM_PEOPLE(room), NULL, NULL, TO_CHAR | TO_ROOM);
 		}
 	
-		// remove any unclaimed/empty vehicles (like furniture) -- those crumble with the building
+		// remove any unclaimed/empty vehicles that don't require maintenance (like furniture) -- those crumble with the building
 		DL_FOREACH_SAFE2(ROOM_VEHICLES(room), veh, next_veh, next_in_room) {
-			if (!VEH_OWNER(veh) && !VEH_CONTAINS(veh)) {
+			if (VEH_PURGES_WHEN_TILE_RUINS(veh)) {
 				extract_vehicle(veh);
 			}
 		}

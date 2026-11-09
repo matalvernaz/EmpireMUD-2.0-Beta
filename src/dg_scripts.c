@@ -1153,6 +1153,7 @@ EVENTFUNC(trig_wait_event) {
 void do_stat_trigger(char_data *ch, trig_data *trig) {
 	struct cmdlist_element *cmd_list;
 	char buf[MAX_STRING_LENGTH];
+	char *attach;
 
 	if (!trig) {
 		log("SYSERR: NULL trigger passed to do_stat_trigger.");
@@ -1164,7 +1165,7 @@ void do_stat_trigger(char_data *ch, trig_data *trig) {
 	// x_TRIGGER
 	switch (trig->attach_type) {
 		case OBJ_TRIGGER: {
-			build_page_display(ch, "Trigger Intended Assignment: Objects");
+			attach = "object";
 			sprintbit(GET_TRIG_TYPE(trig), otrig_types, buf, TRUE);
 			break;
 		}
@@ -1172,28 +1173,32 @@ void do_stat_trigger(char_data *ch, trig_data *trig) {
 		case RMT_TRIGGER:
 		case BLD_TRIGGER:
 		case ADV_TRIGGER: {
-			build_page_display(ch, "Trigger Intended Assignment: Rooms");
+			attach = "room";
 			sprintbit(GET_TRIG_TYPE(trig), wtrig_types, buf, TRUE);
 			break;
 		}
 		case MOB_TRIGGER: {
-			build_page_display(ch, "Trigger Intended Assignment: Mobiles");
+			attach = "mobile";
 			sprintbit(GET_TRIG_TYPE(trig), trig_types, buf, TRUE);
 			break;
 		}
 		case VEH_TRIGGER: {
-			build_page_display(ch, "Trigger Intended Assignment: Vehicles");
+			attach = "vehicle";
 			sprintbit(GET_TRIG_TYPE(trig), vtrig_types, buf, TRUE);
 			break;
 		}
 		case EMP_TRIGGER: {
-			build_page_display(ch, "Trigger Intended Assignment: Empires");
+			attach = "empire";
 			sprintbit(GET_TRIG_TYPE(trig), wtrig_types, buf, TRUE);
+			break;
+		}
+		default: {
+			attach = "error";
 			break;
 		}
 	}
 
-	build_page_display(ch, "Trigger Type: %s, Numeric Arg: %d, Arg list: %s", buf, GET_TRIG_NARG(trig), ((GET_TRIG_ARG(trig) && *GET_TRIG_ARG(trig)) ? GET_TRIG_ARG(trig) : "None"));
+	build_page_display(ch, "Trigger Type: %s(%s), Numeric Arg: %d, Arg list: %s", buf, attach, GET_TRIG_NARG(trig), ((GET_TRIG_ARG(trig) && *GET_TRIG_ARG(trig)) ? GET_TRIG_ARG(trig) : "None"));
 	build_trigger_link_page_display(ch, trig, "Links:");
 
 	build_page_display(ch, "Commands:"); 
@@ -1240,6 +1245,7 @@ void script_stat(char_data *to, struct script_data *sc) {
 	char name[MAX_INPUT_LENGTH];
 	char namebuf[512];
 	char buf1[MAX_STRING_LENGTH];
+	char *attach;
 	
 	if (!to || !sc) {
 		return;
@@ -1263,27 +1269,27 @@ void script_stat(char_data *to, struct script_data *sc) {
 		build_page_display(to, "\r\n  Trigger: &y%s&0, VNum: [&g%5d&0]", GET_TRIG_NAME(t), GET_TRIG_VNUM(t));
 
 		if (t->attach_type==OBJ_TRIGGER) {
-			build_page_display(to, "  Trigger Intended Assignment: Objects");
+			attach = "object";
 			sprintbit(GET_TRIG_TYPE(t), otrig_types, buf1, TRUE);
 		}
 		else if (t->attach_type == WLD_TRIGGER || t->attach_type == RMT_TRIGGER || t->attach_type == BLD_TRIGGER || t->attach_type == ADV_TRIGGER) {
-			build_page_display(to, "  Trigger Intended Assignment: Rooms");
+			attach = "room";
 			sprintbit(GET_TRIG_TYPE(t), wtrig_types, buf1, TRUE);
 		}
 		else if (t->attach_type == VEH_TRIGGER) {
-			build_page_display(to, "  Trigger Intended Assignment: Vehicles");
+			attach = "vehicle";
 			sprintbit(GET_TRIG_TYPE(t), vtrig_types, buf1, TRUE);
 		}
 		else if (t->attach_type == EMP_TRIGGER) {
-			build_page_display(to, "  Trigger Intended Assignment: Empires");
+			attach = "empire";
 			sprintbit(GET_TRIG_TYPE(t), wtrig_types, buf1, TRUE);
 		}
 		else {
-			build_page_display(to, "  Trigger Intended Assignment: Mobiles");
+			attach = "mobile";
 			sprintbit(GET_TRIG_TYPE(t), trig_types, buf1, TRUE);
 		}
 
-		build_page_display(to, "  Trigger Type: %s, Numeric Arg: %d, Arg list: %s",  buf1, GET_TRIG_NARG(t), ((GET_TRIG_ARG(t) && *GET_TRIG_ARG(t)) ? GET_TRIG_ARG(t) : "None"));
+		build_page_display(to, "  Trigger Type: %s(%s), Numeric Arg: %d, Arg list: %s", buf1, attach, GET_TRIG_NARG(t), ((GET_TRIG_ARG(t) && *GET_TRIG_ARG(t)) ? GET_TRIG_ARG(t) : "None"));
 
 		if (GET_TRIG_WAIT(t)) {
 			build_page_display(to, "    Wait: %ld, Current line: %s", dg_event_time(GET_TRIG_WAIT(t)), t->curr_state ? t->curr_state->cmd : "End of Script");
@@ -2383,6 +2389,11 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig, int typ
 				struct instance_data *inst = get_instance_for_script(type, go);
 				safe_snprintf(str, slen, "%d", inst ? INST_ID(inst) : 0);
 			}
+			else if (!str_cmp(var, "_map")) {
+				// %_map% with no field
+				script_log("Trigger: %s, VNum %d, %%_map%% called with no field", GET_TRIG_NAME(trig), GET_TRIG_VNUM(trig));
+				strcpy(str, "0");
+			}
 			else if (!str_cmp(var, "timestamp")) {
 				safe_snprintf(str, slen, "%ld", time(0));
 				return;
@@ -2952,7 +2963,11 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig, int typ
 			}
 			else if (!str_cmp(var, "temperature")) {
 				if (field && (*field == '-' || *field == '+' || isdigit(*field))) {
+					// WARNING: does not work with negatives like %temperature.-3% -- use %temperature.text(-3)%
 					safe_snprintf(str, slen, "%s", temperature_to_string(atoi(field)));
+				}
+				else if (field && !str_cmp(field, "text") && subfield && *subfield) {
+					safe_snprintf(str, slen, "%s", temperature_to_string(atoi(subfield)));
 				}
 				else {
 					strcpy(str, "");
@@ -3008,6 +3023,23 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig, int typ
 				}
 				else if (!str_cmp(field, "name")) {
 					safe_snprintf(str, slen, "%s", find_adv ? GET_ADV_NAME(find_adv) : "");
+				}
+				else {
+					strcpy(str, "");
+				}
+				return;
+			}
+			else if (!str_cmp(var, "_map")) {
+				if (!str_cmp(field, "reverse")) {
+					int dir;
+					
+					// %_map.reverse(dir)%
+					if (subfield && *subfield && ((dir = search_block(subfield, dirs, FALSE)) != NOTHING || (dir = search_block(subfield, alt_dirs, FALSE)) != NOTHING)) {
+						safe_snprintf(str, slen, "%s", dirs[rev_dir[dir]]);
+					}
+					else {
+						strcpy(str, "");
+					}
 				}
 				else {
 					strcpy(str, "");
@@ -3103,7 +3135,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig, int typ
 							ability_data *ab = find_ability(subfield);
 							if (ab && !IS_NPC(c)) {
 								add_bonus_ability(c, ABIL_VNUM(ab));
-								assign_class_and_extra_abilities(c, NULL, ROLE_NONE);
+								assign_class_and_extra_abilities(c, NULL, NOTHING);
 								safe_snprintf(str, slen, "1");
 							}
 							else {
@@ -3593,6 +3625,9 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig, int typ
 						else {
 							safe_snprintf(str, slen, "0");
 						}
+					}
+					else if (!str_cmp(field, "can_see_in_room")) {
+						safe_snprintf(str, slen, "%d", (!AFF_FLAGGED(c, AFF_BLIND) && can_see_in_dark_room(c, IN_ROOM(c), FALSE)) ? 1 : 0);
 					}
 					else if (!str_cmp(field, "can_teleport_room")) {
 						room_data *troom = (subfield && *subfield) ? get_room(IN_ROOM(c), subfield) : IN_ROOM(c);
@@ -4175,7 +4210,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig, int typ
 					else if (!str_cmp(field, "himher")) {
 						safe_snprintf(str, slen, "%s", HMHR(c));
 					}
-					else if (!str_cmp(field, "hitp") || !str_cmp(field, "health")) {
+					else if (!str_cmp(field, "hitp") || !str_cmp(field, "health") || !str_cmp(field, "hitpoints")) {
 						safe_snprintf(str, slen, "%d", GET_HEALTH(c));
 					}	
 					else if (!str_cmp(field, "home")) {
@@ -4404,7 +4439,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig, int typ
 					else if (!str_cmp(field, "maxcarrying")) {
 						safe_snprintf(str, slen, "%d", CAN_CARRY_N(c));
 					}
-					else if (!str_cmp(field, "maxhitp") || !str_cmp(field, "maxhealth")) {
+					else if (!str_cmp(field, "maxhitp") || !str_cmp(field, "maxhealth") || !str_cmp(field, "maxhitpoints")) {
 						safe_snprintf(str, slen, "%d", GET_MAX_HEALTH(c));
 					}
 					else if (!str_cmp(field, "maxblood")) {
@@ -4528,6 +4563,9 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig, int typ
 					else if (!str_cmp(field, "nohassle")) {
 						safe_snprintf(str, slen,"%d", NOHASSLE(c) ? 1 : 0);
 					}
+					else if (!str_cmp(field, "nohunger")) {
+						safe_snprintf(str, slen, "%d", (GET_COND(c, FULL) == -1 || HAS_BONUS_TRAIT(c, BONUS_NO_HUNGER) || has_player_tech(c, PTECH_NO_HUNGER)) ? 1 : 0);
+					}
 					else if (!str_cmp(field, "noskill")) {
 						if (subfield && *subfield && !IS_NPC(c)) {
 							skill_data *sk;							
@@ -4539,6 +4577,9 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig, int typ
 						if (*str != '1') {							
 							safe_snprintf(str, slen, "0");
 						}
+					}
+					else if (!str_cmp(field, "nothirst")) {
+						safe_snprintf(str, slen, "%d", (GET_COND(c, THIRST) == -1 || HAS_BONUS_TRAIT(c, BONUS_NO_THIRST) || has_player_tech(c, PTECH_NO_THIRST)) ? 1 : 0);
 					}
 					break;
 				}
@@ -4557,6 +4598,15 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig, int typ
 						*str = '\0';	// default to no-target
 						if (subfield && *subfield) {
 							if ((targ = get_obj_in_list_vis(c, subfield, NULL, c->carrying))) {
+								safe_snprintf(str, slen, "%c%d", UID_CHAR, obj_script_id(targ));
+							}
+						}
+					}
+					else if (!str_cmp(field, "obj_target_room")) {
+						obj_data *targ;
+						*str = '\0';	// default to no-target
+						if (subfield && *subfield) {
+							if ((targ = get_obj_in_list_vis(c, subfield, NULL, ROOM_CONTENTS(IN_ROOM(c))))) {
 								safe_snprintf(str, slen, "%c%d", UID_CHAR, obj_script_id(targ));
 							}
 						}
@@ -4673,7 +4723,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig, int typ
 							ability_data *ab = find_ability(subfield);
 							if (ab && !IS_NPC(c)) {
 								remove_bonus_ability(c, ABIL_VNUM(ab));
-								assign_class_and_extra_abilities(c, NULL, ROLE_NONE);
+								assign_class_and_extra_abilities(c, NULL, NOTHING);
 								safe_snprintf(str, slen, "1");
 							}
 							else {
@@ -5409,10 +5459,14 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig, int typ
 					else if (!str_cmp(field, "is_name")) {
 						if (subfield && *subfield && MATCH_ITEM_NAME(subfield, o)) {
 							safe_snprintf(str, slen, "1");
-						}
+						} 
 						else {
 							safe_snprintf(str, slen, "0");
 						}
+					}
+					
+					else if (!str_cmp(field, "is_stolen")) {
+						safe_snprintf(str, slen, "%d", IS_STOLEN(o) ? 1 : 0);
 					}
 					break;
 				}
@@ -6020,7 +6074,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig, int typ
 							safe_snprintf(str, slen, "0");	// no vnum provided
 						}
 					}
-					else if (!str_cmp(field, "hitp") || !str_cmp(field, "health")) {
+					else if (!str_cmp(field, "hitp") || !str_cmp(field, "health") || !str_cmp(field, "hitpoints")) {
 						room_data *home = HOME_ROOM(r);
 						if (GET_BUILDING(home)) {
 							safe_snprintf(str, slen, "%d", GET_BLD_MAX_DAMAGE(GET_BUILDING(home)) - (int)BUILDING_DAMAGE(home));
@@ -6034,6 +6088,9 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig, int typ
 							set_room_height(r, atoi(subfield));
 						}
 						safe_snprintf(str, slen, "%d", ROOM_HEIGHT(r));
+					}
+					else if (!str_cmp(field, "homeroom")) {
+						safe_snprintf(str, slen, "%c%d", UID_CHAR, room_script_id(HOME_ROOM(r)));
 					}
 					break;
 				}
@@ -6098,11 +6155,17 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig, int typ
 							safe_snprintf(str, slen, "0");
 						}
 					}
+					else if (!str_cmp(field, "is_OCEAN")) {
+						safe_snprintf(str, slen, "%d", DEEP_WATER_SECT(r) ? 1 : 0);
+					}
 					else if (!str_cmp(field, "is_on_map")) {
 						safe_snprintf(str, slen, "%d", (GET_ROOM_VNUM(r) < MAP_SIZE) ? 1 : 0);
 					}
 					else if (!str_cmp(field, "is_outdoors")) {
 						safe_snprintf(str, slen, "%d", IS_OUTDOOR_TILE(r) ? 1 : 0);
+					}
+					else if (!str_cmp(field, "is_water")) {
+						safe_snprintf(str, slen, "%d", WATER_SECT(r) ? 1 : 0);
 					}
 					else if (!str_cmp(field, "is_zenith_day")) {
 						safe_snprintf(str, slen, "%d", is_zenith_day(r) ? 1 : 0);
@@ -6110,7 +6173,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig, int typ
 					break;
 				}
 				case 'm': {	// room.m*
-					if (!str_cmp(field, "maxhealth") || !str_cmp(field, "maxhitp")) {
+					if (!str_cmp(field, "maxhealth") || !str_cmp(field, "maxhitp") || !str_cmp(field, "maxhitpoints")) {
 						room_data *home = HOME_ROOM(r);
 						if (GET_BUILDING(home)) {
 							safe_snprintf(str, slen, "%d", GET_BLD_MAX_DAMAGE(GET_BUILDING(home)));
@@ -6711,7 +6774,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig, int typ
 							safe_snprintf(str, slen, "0");	// no vnum provided
 						}
 					}
-					else if (!str_cmp(field, "health") || !str_cmp(field, "hitp")) {
+					else if (!str_cmp(field, "health") || !str_cmp(field, "hitp") || !str_cmp(field, "hitpoints")) {
 						safe_snprintf(str, slen, "%d", (int) VEH_HEALTH(v));
 					}
 					break;
@@ -6785,7 +6848,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig, int typ
 					break;
 				}
 				case 'm': {	// veh.m*
-					if (!str_cmp(field, "maxhealth") || !str_cmp(field, "maxhitp")) {
+					if (!str_cmp(field, "maxhealth") || !str_cmp(field, "maxhitp") || !str_cmp(field, "maxhitpoints")) {
 						safe_snprintf(str, slen, "%d", VEH_MAX_HEALTH(v));
 					}
 					else if (!str_cmp(field, "maxrooms")) {
@@ -6986,7 +7049,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig, int typ
 							if (isdigit(*subfield) && (vnum = atoi(subfield)) != NOTHING && (prg = real_progress(vnum))) {
 								if (!empire_has_completed_goal(e, vnum)) {
 									script_reward_goal(e, prg);
-									check_for_eligible_goals(e);
+									TRIGGER_DELAYED_REFRESH(e, DELAY_REFRESH_CHECK_ELIGIBLE_GOALS);
 								}
 								strcpy(str, "1");
 							}
@@ -7356,7 +7419,7 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig, int typ
 									cancel_empire_goal(e, goal);
 								}
 								strcpy(str, "1");
-								check_for_eligible_goals(e);
+								TRIGGER_DELAYED_REFRESH(e, DELAY_REFRESH_CHECK_ELIGIBLE_GOALS);
 							}
 							else {
 								strcpy(str, "0");
@@ -7384,11 +7447,13 @@ void find_replacement(void *go, struct script_data *sc, trig_data *trig, int typ
 									
 									if (goal) {
 										refresh_one_goal_tracker(e, goal);
-									}
-									// check if complete
-									count_quest_tasks(goal->tracker, &complete, &total);
-									if (complete == total) {
-										complete_goal(e, goal);
+										
+										// check if complete
+										count_quest_tasks(goal->tracker, &complete, &total);
+										if (complete == total) {
+											complete_goal(e, goal);
+										}
+										et_update_progress(e, PRG_VNUM(prg));
 									}
 								}
 								strcpy(str, "1");

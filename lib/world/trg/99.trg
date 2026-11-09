@@ -98,6 +98,22 @@ if %count% < 1
   %purge% %self%
 end
 ~
+#9903
+Lonely Despawn - Companions~
+0 abt 10 0
+~
+set despawn 0
+if !%self.companion%
+  set despawn 1
+elseif %self.companion.room% != %self.room%
+  set despawn 1
+end
+* ok?
+if %despawn%
+  %echo% ~%self% leaves.
+  %purge% %self%
+end
+~
 #9910
 Use: Summon Mob / Mount Whistle~
 1 c 2 0
@@ -136,13 +152,13 @@ if !%leader%
   %purge% %self%
   halt
 end
-if %self.aff_flagged(!SEE)%
-  dg_affect %self% !SEE off 1
+if %self.aff_flagged(NO-SEE-IN-ROOM)%
+  dg_affect %self% NO-SEE-IN-ROOM off 1
   dg_affect %self% SNEAK off 1
   %echo% ~%self% appears out of nowhere and starts following ~%leader%.
 else
   %echo% ~%self% vanishes into thin air.
-  dg_affect %self% !SEE on -1
+  dg_affect %self% NO-SEE-IN-ROOM on -1
   dg_affect %self% SNEAK on -1
 end
 ~
@@ -190,8 +206,9 @@ L b 9945
 use~
 * list of vnums granted by this box
 set list 9900 9901 9902 9903 9904 9905 9906 9907 9908 9909 9910 9911 9912 9913 9914 9915 9916 9917 9918 9920 9921 9922 9930 9931 9932 9933 9934 9935 9936 9937 9938 9939 9940 9941 9942 9943 9944 9945
+set list %list% 9946 9947 9948 9949 9950 9951 9952 9953 9954 9955 9956
 * length is used to shuffle the start point of the list
-set length 38
+set length 49
 *
 if %actor.obj_target(%arg%)% != %self%
   return 0

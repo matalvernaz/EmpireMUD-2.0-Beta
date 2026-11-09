@@ -131,10 +131,11 @@ S
 knife barkeep's barkeeps~
 the barkeep's knife~
 The barkeep's knife has been left here.~
-   The barkeep asked you to use this knife to butcher a wolf or bear and bring
-back its head.
+   The barkeep asked you to use this knife to butcher a great predator and
+bring back its head. Some kind of wolf, bear, big car, or hyena should do. An
+alligator or even a shark would really show off.
 ~
-1 p ano f 0 4
+1 p ano f 0 5
 0 1 1
 0 0
 C
@@ -197,8 +198,8 @@ S
 letter smith undelivered~
 a letter for the smith~
 An undelivered letter is lying here.~
-   This letter needs to be delivered to the smith (or forgemaster) in your
-empire... But maybe you could take a peek.
+   This letter needs to be delivered to the smith (or forgemaster or starsmith)
+in your empire... But maybe you could take a peek.
 ~
 3 0 a 0 0 3
 0 0 0
@@ -333,8 +334,8 @@ A seeping wineskin is lying on the ground.~
    The wineskin is poorly made, and badly damaged from decades -- or more -- of
 heavy use.
 ~
-5 p a 0 0 2
-72 0 6
+5 p a 0 0 3
+72 72 6
 7 96
 S
 $

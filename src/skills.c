@@ -1485,8 +1485,9 @@ void mark_level_gained_from_ability(char_data *ch, ability_data *abil) {
 * Switches a player's current skill set from one to the other.
 *
 * @param char_data *ch The player to swap.
+* @param int which_swap Which set to swap to (0 or 1).
 */
-void perform_swap_skill_sets(char_data *ch) {
+void perform_swap_skill_sets(char_data *ch, int which_swap) {
 	struct player_ability_data *plab, *next_plab;
 	int cur_set, old_set;
 	ability_data *abil;
@@ -1495,9 +1496,14 @@ void perform_swap_skill_sets(char_data *ch) {
 		return;
 	}
 	
+	if (which_swap < 0 || which_swap >= NUM_SKILL_SETS) {
+		log("SYSERR: %s swapping to invalid skill swap %d", GET_NAME(ch), which_swap);
+	}
+	which_swap = MAX(0, MIN(1, which_swap));
+	
 	// note: if you ever raise NUM_SKILL_SETS, this is going to need an update
 	old_set = GET_CURRENT_SKILL_SET(ch);
-	cur_set = (old_set == 1) ? 0 : 1;
+	cur_set = which_swap;
 	
 	// update skill set
 	GET_CURRENT_SKILL_SET(ch) = cur_set;
@@ -1843,7 +1849,7 @@ ACMD(do_skills) {
 	int points, level, iter;
 	bool found, any, line;
 	bool sort_alpha = FALSE, sort_level = FALSE, want_min = FALSE, want_max = FALSE, want_all = FALSE, show_all_info = FALSE;
-	int min_level = -1, max_level = -1;
+	int min_level = -1, max_level = -1, which = -1;
 	struct player_bonus_ability *bonus_abil, *next_bonus_abil;
 	
 	// attempt to parse the args first, to get -l [range] or -a
@@ -2064,6 +2070,12 @@ ACMD(do_skills) {
 		if (!any) {
 			build_page_display_str(ch, " none");
 		}
+		
+		// skill swap?
+		if (config_get_bool("skill_swap_allowed") && GET_SKILL_LEVEL(ch) >= config_get_int("skill_swap_min_level")) {
+			build_page_display(ch, "You are using skill set %d.\r\n", GET_CURRENT_SKILL_SET(ch) + 1);
+		}
+		
 		build_page_display_str(ch, get_skill_gain_display(ch));
 		send_page_display(ch);
 	}
@@ -2219,8 +2231,15 @@ ACMD(do_skills) {
 		}
 	}
 	else if (!str_cmp(arg, "swap")) {
-		if (IS_IMMORTAL(ch)) {
-			perform_swap_skill_sets(ch);
+		// optional choice of which set (1 or 2) which translate to pos 0 or 1
+		if (*arg2 && ((which = atoi(arg2)) < 1 || which > 2)) {
+			msg_to_char(ch, "Usage: skill swap [1 | 2]\r\n");
+		}
+		else if (which != -1 && GET_CURRENT_SKILL_SET(ch) == (which - 1)) {
+			msg_to_char(ch, "You are already using set %d.\r\n", which);
+		}
+		else if (IS_IMMORTAL(ch)) {
+			perform_swap_skill_sets(ch, (which == -1 ? (GET_CURRENT_SKILL_SET(ch) == 1 ? 0 : 1) : (which-1)));
 			msg_to_char(ch, "You swap skill sets.\r\n");
 		}
 		else if (!config_get_bool("skill_swap_allowed")) {
@@ -2240,6 +2259,7 @@ ACMD(do_skills) {
 		}
 		else {
 			start_action(ch, ACT_SWAP_SKILL_SETS, 3);
+			GET_ACTION_VNUM(ch, 0) = (which == -1 ? (GET_CURRENT_SKILL_SET(ch) == 1 ? 0 : 1) : (which-1));
 			act("You prepare to swap skill sets...", FALSE, ch, NULL, NULL, TO_CHAR);
 			act("$n prepares to swap skill sets...", TRUE, ch, NULL, NULL, TO_ROOM);
 		}
@@ -2335,7 +2355,8 @@ ACMD(do_skills) {
 		
 		// good to go
 		msg_to_char(ch, "You no longer know %s.\r\n", ABIL_NAME(abil));
-
+		
+		remove_bonus_ability(ch, ABIL_VNUM(abil));
 		remove_ability(ch, abil, FALSE);
 		check_skill_sell(ch, abil);
 		queue_delayed_update(ch, CDU_SAVE);
@@ -2396,6 +2417,11 @@ ACMD(do_skills) {
 		
 		if (show_all_info && !PRF_FLAGGED(ch, PRF_NO_TUTORIALS) && max_level < SKILL_MAX_LEVEL(skill)) {
 			build_page_display(ch, "(For higher level abilities, use 'skill %s -all')", SKILL_NAME(skill));
+		}
+
+		// skill swap?
+		if (config_get_bool("skill_swap_allowed") && GET_SKILL_LEVEL(ch) >= config_get_int("skill_swap_min_level")) {
+			build_page_display(ch, "Skill set: %d\r\n", GET_CURRENT_SKILL_SET(ch) + 1);
 		}
 		
 		send_page_display(ch);
@@ -2484,16 +2510,17 @@ ACMD(do_specialize) {
 *
 * @param char_data *ch The player trying to gain exp.
 * @param char_data *vict The victim of the ability.
+* @param ability_data *abil Optional: Which ability is being considered (may be NULL).
 * @return bool TRUE if okay to gain experience, or FALSE.
 */
-bool can_gain_exp_from(char_data *ch, char_data *vict) {
+bool can_gain_exp_from(char_data *ch, char_data *vict, ability_data *abil) {
 	if (IS_NPC(ch)) {
 		return FALSE;	// mobs gain no exp
 	}
 	if (ch == vict || !vict) {
 		return TRUE;	// always okay
 	}
-	if (MOB_FLAGGED(vict, MOB_NO_EXPERIENCE)) {
+	if (MOB_FLAGGED(vict, MOB_NO_EXPERIENCE) && (!abil || !ABILITY_FLAGGED(abil, ABILF_IGNORE_NO_EXP))) {
 		return FALSE;
 	}
 	if ((!IS_NPC(vict) || GET_CURRENT_SCALE_LEVEL(vict) > 0) && get_approximate_level(vict) < get_approximate_level(ch) - config_get_int("exp_level_difference")) {
@@ -3150,6 +3177,9 @@ void olc_fullsearch_skill(char_data *ch, char *argument) {
 			else if (multi_isname(find_keywords, SKILL_ABBREV(sk))) {
 				any = TRUE;
 			}
+			else if (SKILL_NOTES(sk) && multi_isname(find_keywords, SKILL_NOTES(sk))) {
+				any = TRUE;
+			}
 			
 			// did we find a match in any string
 			if (!any) {
@@ -3562,6 +3592,9 @@ void free_skill(skill_data *skill) {
 	if (SKILL_DESC(skill) && (!proto || SKILL_DESC(skill) != SKILL_DESC(proto))) {
 		free(SKILL_DESC(skill));
 	}
+	if (SKILL_NOTES(skill) && (!proto || SKILL_NOTES(skill) != SKILL_NOTES(proto))) {
+		free(SKILL_NOTES(skill));
+	}
 	if (SKILL_ABILITIES(skill) && (!proto || SKILL_ABILITIES(skill) != SKILL_ABILITIES(proto))) {
 		free_skill_abilities(SKILL_ABILITIES(skill));
 	}
@@ -3663,6 +3696,11 @@ void parse_skill(FILE *fl, any_vnum vnum) {
 				break;
 			}
 			
+			case '_': {	// notes
+				SKILL_NOTES(skill) = fread_string(fl, error);
+				break;
+			}
+			
 			// end
 			case 'S': {
 				return;
@@ -3703,6 +3741,7 @@ void write_skill_index(FILE *fl) {
 * @param skill_data *skill The thing to save.
 */
 void write_skill_to_file(FILE *fl, skill_data *skill) {
+	char temp[MAX_STRING_LENGTH];
 	struct synergy_ability *syn;
 	struct skill_ability *iter;
 	
@@ -3732,6 +3771,13 @@ void write_skill_to_file(FILE *fl, skill_data *skill) {
 	// Y: synergies
 	LL_FOREACH(SKILL_SYNERGIES(skill), syn) {
 		fprintf(fl, "Y %d %d %d %d %d\n", syn->role, syn->skill, syn->level, syn->ability, syn->unused);
+	}
+	
+	// '_'
+	if (SKILL_NOTES(skill) && *SKILL_NOTES(skill)) {
+		strcpy(temp, SKILL_NOTES(skill));
+		strip_crlf(temp);
+		fprintf(fl, "_\n%s~\n", temp);
 	}
 	
 	// end
@@ -4030,6 +4076,9 @@ void save_olc_skill(descriptor_data *desc) {
 	if (SKILL_DESC(proto)) {
 		free(SKILL_DESC(proto));
 	}
+	if (SKILL_NOTES(proto)) {
+		free(SKILL_NOTES(proto));
+	}
 	free_skill_abilities(SKILL_ABILITIES(proto));
 	free_synergy_abilities(SKILL_SYNERGIES(proto));
 	
@@ -4051,6 +4100,10 @@ void save_olc_skill(descriptor_data *desc) {
 			free(SKILL_DESC(skill));
 		}
 		SKILL_DESC(skill) = str_dup(default_skill_desc);
+	}
+	if (SKILL_NOTES(skill) && !*SKILL_NOTES(skill)) {
+		free(SKILL_NOTES(skill));
+		SKILL_NOTES(skill) = NULL;
 	}
 	
 	// save data back over the proto-type
@@ -4096,6 +4149,7 @@ skill_data *setup_olc_skill(skill_data *input) {
 		SKILL_NAME(new) = SKILL_NAME(input) ? str_dup(SKILL_NAME(input)) : NULL;
 		SKILL_ABBREV(new) = SKILL_ABBREV(input) ? str_dup(SKILL_ABBREV(input)) : NULL;
 		SKILL_DESC(new) = SKILL_DESC(input) ? str_dup(SKILL_DESC(input)) : NULL;
+		SKILL_NOTES(new) = SKILL_NOTES(input) ? str_dup(SKILL_NOTES(input)) : NULL;
 		SKILL_ABILITIES(new) = copy_skill_abilities(SKILL_ABILITIES(input));
 		SKILL_SYNERGIES(new) = copy_synergy_abilities(SKILL_SYNERGIES(input));
 	}
@@ -4327,6 +4381,10 @@ void do_stat_skill(char_data *ch, skill_data *skill) {
 		build_page_display_str(ch, part);
 	}
 	
+	if (SKILL_NOTES(skill) && *SKILL_NOTES(skill)) {
+		build_page_display(ch, "Notes:\r\n%s", SKILL_NOTES(skill));
+	}
+	
 	send_page_display(ch);
 }
 
@@ -4376,6 +4434,8 @@ void olc_show_skill(char_data *ch) {
 			build_page_display_str(ch, lbuf);
 		}
 	}
+	
+	build_page_display(ch, "<%snotes\t0>\r\n%s", OLC_LABEL_PTR(SKILL_NOTES(skill)), NULLSAFE(SKILL_NOTES(skill)));
 	
 	send_page_display(ch);
 }
@@ -4493,6 +4553,19 @@ OLC_MODULE(skilledit_mindrop) {
 OLC_MODULE(skilledit_name) {
 	skill_data *skill = GET_OLC_SKILL(ch->desc);
 	olc_process_string(ch, argument, "name", &SKILL_NAME(skill));
+}
+
+
+OLC_MODULE(skilledit_notes) {
+	skill_data *skill = GET_OLC_SKILL(ch->desc);
+
+	if (ch->desc->str) {
+		msg_to_char(ch, "You are already editing a string.\r\n");
+	}
+	else {
+		sprintf(buf, "notes for %s", SKILL_NAME(skill));
+		start_string_editor(ch->desc, buf, &SKILL_NOTES(skill), MAX_NOTES, TRUE);
+	}
 }
 
 

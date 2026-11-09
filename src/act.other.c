@@ -154,6 +154,8 @@ void do_customize_road(char_data *ch, char *argument) {
 * @param obj_data *cont Optional: The liquid container full of water (may be NULL).
 */
 void do_douse_obj(char_data *ch, obj_data *obj, obj_data *cont) {
+	bool send_throw_away = CAN_WEAR(obj, ITEM_WEAR_TAKE) ? TRUE : FALSE;
+	
 	if (!IS_LIGHT(obj)) {
 		msg_to_char(ch, "You can't douse that -- it's not a light or fire.\r\n");
 	}
@@ -162,6 +164,9 @@ void do_douse_obj(char_data *ch, obj_data *obj, obj_data *cont) {
 	}
 	else if (!LIGHT_FLAGGED(obj, LIGHT_FLAG_CAN_DOUSE)) {
 		act("You can't seem to douse $p.", FALSE, ch, obj, NULL, TO_CHAR);
+	}
+	else if (IS_STOLEN(obj)) {
+		act("$p: you can't douse stolen items.", FALSE, ch, obj, NULL, TO_CHAR);
 	}
 	else if (IN_ROOM(obj) && !can_use_room(ch, IN_ROOM(ch), GUESTS_ALLOWED) && (IS_NPC(ch) || LAST_OWNER_ID(obj) != GET_IDNUM(ch))) {
 		msg_to_char(ch, "You can't douse anything here.\r\n");
@@ -192,7 +197,7 @@ void do_douse_obj(char_data *ch, obj_data *obj, obj_data *cont) {
 		}
 		
 		// douse it -- this may extract the item
-		if (douse_light(obj) == FALSE) {
+		if (douse_light(obj) == FALSE && send_throw_away) {
 			msg_to_char(ch, "It's used up and you throw it away.\r\n");
 		}
 	}
@@ -435,6 +440,7 @@ void perform_alternate(char_data *old, char_data *new) {
 	msg_to_char(new, "\r\n");
 	
 	display_automessages_on_login(new);
+	log_active_events_to_char(new);
 	
 	if (!PRF_FLAGGED(new, PRF_NO_TUTORIALS)) {
 		display_tip_to_char(new);
@@ -454,6 +460,10 @@ void perform_alternate(char_data *old, char_data *new) {
 	}
 	if (show_start && (msg = config_get_string("start_message")) && *msg) {
 		msg_to_char(new, "\r\n\tY%s\t0", msg);
+	}
+	
+	if (should_reset_bonus_traits(new) || num_earned_bonus_traits(new) > count_bits(GET_BONUS_TRAITS(new))) {
+		msg_to_char(new, "\r\n\tAYou have new bonus traits available. Quit and then re-login from the login screen to choose them.\t0\r\n");
 	}
 	
 	if (!IS_IMMORTAL(new)) {
@@ -623,6 +633,7 @@ INTERACTION_FUNC(shear_interact) {
 	
 	for (iter = 0; iter < amt; ++iter) {
 		obj = read_object(interaction->vnum, TRUE);
+		scale_item_to_level(obj, inter_mob ? get_approximate_level(inter_mob) : GET_COMPUTED_LEVEL(ch));
 		obj_to_char(obj, ch);
 		obj_ok = load_otrigger(obj);
 	}
@@ -677,7 +688,7 @@ INTERACTION_FUNC(skin_interact) {
 		
 	for (num = 0; num < interaction->quantity; ++num) {
 		obj = read_object(interaction->vnum, TRUE);
-		scale_item_to_level(obj, 1);	// min scale
+		scale_item_to_level(obj, inter_item ? GET_OBJ_CURRENT_SCALE_LEVEL(inter_item) : GET_COMPUTED_LEVEL(ch));
 		obj_to_char(obj, ch);
 		obj_ok = load_otrigger(obj);
 	}
@@ -1148,7 +1159,7 @@ void do_alt_import(char_data *ch, char *argument) {
 	char_data *alt = NULL;
 	bool file = FALSE;
 	
-	static const char *valid_fields = "Valid fields: aliases, prompt, fprompt, preferences, fightmessages, recolors, slash-channels, ignores, all\r\n";
+	static const char *valid_fields = "Valid fields: aliases, prompt, fprompt, preferences, fightmessages, statusmessages, recolors, slash-channels, ignores, all\r\n";
 	
 	two_arguments(argument, arg1, arg2);
 	
@@ -1587,6 +1598,10 @@ ACMD(do_alternate) {
 			msg_to_char(ch, "You're already playing that character.\r\n");
 			return;
 		}
+		if (has_stolen_items(ch)) {
+			msg_to_char(ch, "You can't switch characters while you have stolen items! Drop them on the owner's territory first, or wait for the timer to expire.\r\n");
+			return;
+		}
 		if (get_cooldown_time(ch, COOLDOWN_ALTERNATE) > 0 && !IS_IMMORTAL(newch)) {
 			msg_to_char(ch, "You can't alternate again so soon.\r\n");
 			return;
@@ -1701,6 +1716,9 @@ ACMD(do_changepass) {
 	argument = any_one_word(argument, new1);
 	argument = any_one_word(argument, new2);
 	
+	// always clear command history-- don't keep passwords
+	clear_command_history(ch->desc);
+	
 	if (IS_NPC(ch)) {
 		msg_to_char(ch, "You can't do that.\r\n");
 	}
@@ -1724,7 +1742,8 @@ ACMD(do_changepass) {
 		if (ch->desc && ch->desc->snoop_by) {
 			syslog(SYS_INFO, MIN(LVL_TOP, MAX(GET_INVIS_LEV(ch), GET_ACCESS_LEVEL(ch) + 1)), TRUE, "WARNING: %s changed password while being snooped", GET_NAME(ch));
 		}
-		msg_to_char(ch, "You have successfully changed your password.\r\n");
+		
+		msg_to_char(ch, "You have successfully changed your password. Your command history has been cleared for privacy.\r\n");
 	}
 }
 
@@ -1893,7 +1912,7 @@ ACMD(do_confirm) {
 	}
 
 	if (GET_POS(ch) == POS_FIGHTING) {
-		msg_to_char(ch, "How can you be ready?  You're fighting for your life!\r\n");
+		msg_to_char(ch, "How can you be ready? You're fighting for your life!\r\n");
 		return;
 	}
 
@@ -2012,28 +2031,29 @@ ACMD(do_douse) {
 	if (!obj && !use_room) {
 		msg_to_char(ch, "You have nothing to douse the fire with!\r\n");
 	}
-	else if (*arg && str_cmp(arg, "fire")) {
-		if ((veh = get_vehicle_in_room_vis(ch, arg, NULL))) {
-			do_douse_vehicle(ch, veh, obj);
-		}
-		else if (GET_ROOM_VEHICLE(IN_ROOM(ch)) && isname(arg, VEH_KEYWORDS(GET_ROOM_VEHICLE(IN_ROOM(ch))))) {
-			do_douse_vehicle(ch, GET_ROOM_VEHICLE(IN_ROOM(ch)), obj);
-		}
-		else if (generic_find(arg, NULL, FIND_OBJ_INV | FIND_OBJ_ROOM | FIND_OBJ_EQUIP, ch, NULL, &found_obj, NULL)) {
-			do_douse_obj(ch, found_obj, obj);
-		}
-		else {
-			msg_to_char(ch, "You don't see %s %s to douse!\r\n", AN(arg), arg);
-		}
-	}
-	else if (GET_ROOM_VEHICLE(IN_ROOM(ch)) && VEH_FLAGGED(GET_ROOM_VEHICLE(IN_ROOM(ch)), VEH_ON_FIRE)) {
+	else if ((!*arg || !str_cmp(arg, "fire")) && GET_ROOM_VEHICLE(IN_ROOM(ch)) && VEH_FLAGGED(GET_ROOM_VEHICLE(IN_ROOM(ch)), VEH_ON_FIRE)) {
+		// 'douse fire' in burning vehicle
 		do_douse_vehicle(ch, GET_ROOM_VEHICLE(IN_ROOM(ch)), obj);
 	}
-	else if (!IS_ANY_BUILDING(IN_ROOM(ch)) || !IS_BURNING(room)) {
+	else if ((!*arg || !str_cmp(arg, "fire")) && IS_ANY_BUILDING(IN_ROOM(ch)) && IS_BURNING(room)) {
+		// 'douse fire' in burning building
+		do_douse_room(ch, room, obj);
+	}
+	else if (!*arg) {
+		// no-arg
 		msg_to_char(ch, "There's no fire here!\r\n");
 	}
+	else if ((veh = get_vehicle_in_room_vis(ch, arg, NULL))) {
+		do_douse_vehicle(ch, veh, obj);
+	}
+	else if (GET_ROOM_VEHICLE(IN_ROOM(ch)) && isname(arg, VEH_KEYWORDS(GET_ROOM_VEHICLE(IN_ROOM(ch))))) {
+		do_douse_vehicle(ch, GET_ROOM_VEHICLE(IN_ROOM(ch)), obj);
+	}
+	else if (generic_find(arg, NULL, FIND_OBJ_INV | FIND_OBJ_ROOM | FIND_OBJ_EQUIP, ch, NULL, &found_obj, NULL)) {
+		do_douse_obj(ch, found_obj, obj);
+	}
 	else {
-		do_douse_room(ch, room, obj);
+		msg_to_char(ch, "You don't see %s %s to douse!\r\n", AN(arg), arg);
 	}
 }
 
@@ -2041,7 +2061,6 @@ ACMD(do_douse) {
 // this now also controls status messages using SCMD_FIGHT or SCMD_STATUS
 // search hints: do_fmessages, do_smessages, do_statusmessages
 ACMD(do_fightmessages) {
-	bool screenreader = PRF_FLAGGED(ch, PRF_SCREEN_READER);
 	char arg1[MAX_INPUT_LENGTH], arg2[MAX_INPUT_LENGTH];
 	int iter, type = NOTHING, count;
 	bool on = FALSE, off = FALSE, mode;
@@ -2102,15 +2121,15 @@ ACMD(do_fightmessages) {
 		count = 0;
 		for (iter = 0; *type_strings[iter] != '\n'; ++iter) {
 			on = (IS_SET(*flagset, BIT(iter)) ? TRUE : FALSE);
-			if (screenreader) {
-				msg_to_char(ch, "%s: %s\r\n", type_strings[iter], on ? "on" : "off");
+			if (PRF_FLAGGED(ch, PRF_SCREEN_READER)) {
+				msg_to_char(ch, "%s: %s%s", type_strings[iter], on ? "on" : "off", ((PRF_FLAGGED(ch, PRF_NO_COLUMNS) || !(++count % 2)) ? "\r\n" : ""));
 			}
 			else {
-				msg_to_char(ch, " [%s%3.3s\t0] %-25.25s%s", on ? "\tg" : "\tr", on ? "on" : "off", type_strings[iter], (!(++count % 2) ? "\r\n" : ""));
+				msg_to_char(ch, " [%s%3.3s\t0] %-25.25s%s", on ? "\tg" : "\tr", on ? "on" : "off", type_strings[iter], ((PRF_FLAGGED(ch, PRF_NO_COLUMNS) || !(++count % 2)) ? "\r\n" : ""));
 			}
 		}
 		
-		if (count % 2 && !screenreader) {
+		if (count % 2 && !PRF_FLAGGED(ch, PRF_NO_COLUMNS)) {
 			send_to_char("\r\n", ch);
 		}
 	}
@@ -2751,9 +2770,10 @@ ACMD(do_milk) {
 
 
 ACMD(do_minipets) {
+	bool random = FALSE;
 	struct minipet_data *mini, *next_mini;
 	char_data *mob, *to_summon;
-	int count, number;
+	int count, num;
 	
 	skip_spaces(&argument);
 	
@@ -2800,18 +2820,35 @@ ACMD(do_minipets) {
 			dismiss_any_minipet(ch);
 		}
 	}
+	else if (!GET_MINIPETS(ch)) {
+		msg_to_char(ch, "You don't have any minipets.\r\n");
+	}
 	else {
-		number = get_number(&argument);
+		if (!str_cmp(argument, "rand") || !str_cmp(argument, "random")) {
+			random = TRUE;
+			num = 0;
+		}
+		else {
+			// not random: allow number-dot-name syntax
+			num = get_number(&argument);
+		}
 		
 		to_summon = NULL;	// to find
 		HASH_ITER(hh, GET_MINIPETS(ch), mini, next_mini) {
 			if (!(mob = mob_proto(mini->vnum))) {
 				continue;	// no mob
 			}
+			
+			if (random) {
+				// just pick based on number
+				if (!number(0, num++) || !to_summon) {
+					to_summon = mob;
+				}
+			}
 			else if (!multi_isname(argument, GET_PC_NAME(mob))) {
 				continue;	// no match
 			}
-			else if (--number == 0) {
+			else if (--num == 0) {
 				to_summon = mob;
 				break;	// FOUND!
 			}
@@ -3180,6 +3217,9 @@ ACMD(do_quit) {
 	else if (ch->desc->str && !confirm) {
 		msg_to_char(ch, "You can't quit with a text editor open (use /save or /abort first, or 'quit confirm').\r\n");
 	}
+	else if (has_stolen_items(ch)) {
+		msg_to_char(ch, "You can't quit while you have stolen items! Drop them on the owner's territory first, or wait for the timer to expire.\r\n");
+	}
 	else if (GET_POS(ch) < POS_STUNNED && !confirm) {
 		msg_to_char(ch, "Quitting now will kill your character. Type 'quit confirm' to proceed.\r\n");
 	}
@@ -3342,7 +3382,7 @@ ACMD(do_shear) {
 	else if (!(mob = get_char_vis(ch, arg, NULL, FIND_CHAR_ROOM))) {
 		send_config_msg(ch, "no_person");
 	}
-	else if (!IS_NPC(mob) || !has_interaction(mob->interactions, INTERACT_SHEAR)) {
+	else if (!IS_NPC(mob) || !has_interaction(MOB_INTERACTIONS(mob), INTERACT_SHEAR)) {
 		act("You can't shear $N!", FALSE, ch, NULL, mob, TO_CHAR);
 	}
 	else if (get_cooldown_time(mob, COOLDOWN_SHEAR) > 0) {
@@ -3354,7 +3394,7 @@ ACMD(do_shear) {
 	else {
 		check_scaling(mob, ch);	// ensure mob is scaled -- this matters for global interactions
 		
-		any = run_interactions(ch, mob->interactions, INTERACT_SHEAR, IN_ROOM(ch), mob, NULL, NULL, shear_interact);
+		any = run_interactions(ch, MOB_INTERACTIONS(mob), INTERACT_SHEAR, IN_ROOM(ch), mob, NULL, NULL, shear_interact);
 		any |= run_global_mob_interactions(ch, mob, INTERACT_SHEAR, shear_interact);
 		
 		if (any) {
@@ -3395,7 +3435,7 @@ ACMD(do_skin) {
 	}
 	else if (!IS_CORPSE(obj))
 		msg_to_char(ch, "You can only skin corpses.\r\n");
-	else if (GET_CORPSE_NPC_VNUM(obj) == NOTHING || !(proto = mob_proto(GET_CORPSE_NPC_VNUM(obj))) || !has_interaction(proto->interactions, INTERACT_SKIN)) {
+	else if (GET_CORPSE_NPC_VNUM(obj) == NOTHING || !(proto = mob_proto(GET_CORPSE_NPC_VNUM(obj))) || !has_interaction(MOB_INTERACTIONS(proto), INTERACT_SKIN)) {
 		msg_to_char(ch, "You can't skin that.\r\n");
 	}
 	else if (!bind_ok(obj, ch)) {
@@ -3405,11 +3445,14 @@ ACMD(do_skin) {
 		msg_to_char(ch, "It's too badly mangled to get any amount of usable skin.\r\n");
 	else if (IS_SET(GET_CORPSE_FLAGS(obj), CORPSE_SKINNED))
 		msg_to_char(ch, "It's already been skinned.\r\n");
+	else if (IS_STOLEN(obj)) {
+		act("$p: you can't skin stolen corpses.", FALSE, ch, obj, NULL, TO_CHAR);
+	}
 	else if (!has_tool(ch, TOOL_KNIFE))
 		msg_to_char(ch, "You need to be using a good knife to skin a corpse.\r\n");
 	else {
 		// run it
-		if (IS_SET(GET_CORPSE_FLAGS(obj), CORPSE_NO_LOOT) || !run_interactions(ch, proto->interactions, INTERACT_SKIN, IN_ROOM(ch), NULL, obj, NULL, skin_interact)) {
+		if (IS_SET(GET_CORPSE_FLAGS(obj), CORPSE_NO_LOOT) || !run_interactions(ch, MOB_INTERACTIONS(proto), INTERACT_SKIN, IN_ROOM(ch), NULL, obj, NULL, skin_interact)) {
 			act("You try to skin $p but get nothing useful.", FALSE, ch, obj, NULL, TO_CHAR);
 		}
 		else {
@@ -3458,7 +3501,6 @@ ACMD(do_toggle) {
 	char arg[MAX_INPUT_LENGTH];
 	struct alpha_tog *altog;
 	bool imm;
-	bool screenreader = PRF_FLAGGED(ch, PRF_SCREEN_READER);
 	
 	if (IS_NPC(ch)) {
 		msg_to_char(ch, "NPCs do not have toggles.\r\n");
@@ -3469,7 +3511,7 @@ ACMD(do_toggle) {
 	skip_spaces(&argument);
 	
 	for (iter = 0; *toggle_data[iter].name != '\n' && type == NOTHING; ++iter) {
-		if (toggle_data[iter].level <= GET_ACCESS_LEVEL(ch) && is_abbrev(arg, toggle_data[iter].name)) {
+		if (toggle_data[iter].level <= GET_ACCESS_LEVEL(ch) && is_abbrev_ignore_hyphen(arg, toggle_data[iter].name)) {
 			type = iter;
 		}
 	}
@@ -3480,7 +3522,7 @@ ACMD(do_toggle) {
 		
 		iter = count = 0;
 		LL_FOREACH(alpha_tog_list, altog) {
-			pos = screenreader ? altog->pos : iter++;	// shows in alpha order for SR; normal order for rest
+			pos = PRF_FLAGGED(ch, PRF_SCREEN_READER) ? altog->pos : iter++;	// shows in alpha order for SR; normal order for rest
 			if (*toggle_data[pos].name == '\n') {
 				break;	// this should not be possible, but just in case
 			}
@@ -3488,16 +3530,16 @@ ACMD(do_toggle) {
 			if (toggle_data[pos].level <= GET_ACCESS_LEVEL(ch)) {
 				on = (PRF_FLAGGED(ch, toggle_data[pos].bit) ? 1 : 0);
 				imm = (toggle_data[pos].level >= LVL_START_IMM);
-				if (screenreader) {
-					msg_to_char(ch, "%s: %s%s\r\n", toggle_data[pos].name, tognames[toggle_data[pos].type][on], imm ? " (immortal)" : "");
+				if (PRF_FLAGGED(ch, PRF_SCREEN_READER)) {
+					msg_to_char(ch, "%s: %s%s%s", toggle_data[pos].name, tognames[toggle_data[pos].type][on], imm ? " (immortal)" : "", ((PRF_FLAGGED(ch, PRF_NO_COLUMNS) || !(++count % 3)) ? "\r\n" : ""));
 				}
 				else {
-					msg_to_char(ch, " %s[%s%3.3s%s] %-15.15s%s%s", imm ? imm_color : "", togcols[toggle_data[pos].type][on], tognames[toggle_data[pos].type][on], imm ? imm_color : clear_color, toggle_data[pos].name, clear_color, (!(++count % 3) ? "\r\n" : ""));
+					msg_to_char(ch, " %s[%s%3.3s%s] %-15.15s%s%s", imm ? imm_color : "", togcols[toggle_data[pos].type][on], tognames[toggle_data[pos].type][on], imm ? imm_color : clear_color, toggle_data[pos].name, clear_color, ((PRF_FLAGGED(ch, PRF_NO_COLUMNS) || !(++count % 3)) ? "\r\n" : ""));
 				}
 			}
 		}
 		
-		if (count % 3 && !screenreader) {
+		if (count % 3 && !PRF_FLAGGED(ch, PRF_NO_COLUMNS)) {
 			send_to_char("\r\n", ch);
 		}
 	}

@@ -1,6 +1,7 @@
 #5107
 Mine Rename Based on Type~
-2 o 100 0
+2 o 100 1
+L f 5107
 ~
 wait 0
 set type %room.mine_type%
@@ -392,6 +393,20 @@ elseif !%actor.canuseroom_guest%
   %send% %actor% You wouldn't want to get caught bathing in here.
   halt
 end
+* already bathing?
+set any 0
+set obj %room.contents%
+while %obj% && !%any%
+  if %obj.vnum% == 5162 && %obj.val0% == %actor.id%
+    set any 1
+  end
+  set obj %obj.next_in_list%
+done
+if %any%
+  %send% %actor% You are already bathing.
+  return 1
+  halt
+end
 * ok bathe:
 %load% obj 5162
 set obj %room.contents%
@@ -407,10 +422,12 @@ nop %obj.val1(4)%
 set stop_command 0
 set stop_message_char You climb out of the water and get dressed.
 set stop_message_room ~%actor% climbs out of the water and gets dressed.
+set stop_room_lock %room.id%
 set needs_stop_command 1
 remote stop_command %actor.id%
 remote stop_message_char %actor.id%
 remote stop_message_room %actor.id%
+remote stop_room_lock %actor.id%
 remote needs_stop_command %actor.id%
 * start messages
 if %actor.eq(clothes)%
@@ -431,6 +448,20 @@ if !%room.up(room)%
   %door% %room% up add 5511
 end
 detach 5164 %room.id%
+~
+#5185
+Portal dismantle~
+2 s 0 0
+~
+set obj %room.contents%
+while %obj%
+  set next_obj %obj.next_in_list%
+  if %obj.type% == PORTAL
+    %echo% @%obj% implodes and vanishes!
+    %purge% %obj%
+  end
+  set obj %next_obj%
+done
 ~
 #5186
 Haven Interior~
@@ -545,21 +576,54 @@ L w 5102
 L w 5103
 L w 5104
 shatter~
+* certain resources that are too easy to acquire
+set ban_list -1 100 102 106 131 134 135 136 142 146 148 180 181 184 616 851 852 919 2104 2140
+*
 eval target %%actor.obj_target(%arg.argument1%)%%
-if !%target%
+if !%arg%
+  * no-arg: just list
+  %send% %actor% Shatter which piece of gear?
+  set any 0
+  set obj %actor.inventory%
+  while %obj%
+    if %obj.wearable% && !%obj.is_flagged(*KEEP)% && !%obj.is_stolen% && !(%ban_list% ~= %obj.vnum%)
+      if %obj.is_flagged(SUPERIOR)%
+        set qual &&Y superior&&0
+      elseif %obj.is_flagged(HARD-DROP)% && %obj.is_flagged(GROUP-DROP)%
+        set qual &&M boss&&0
+      elseif %obj.is_flagged(GROUP-DROP)%
+        set qual &&C group&&0
+      elseif %obj.is_flagged(HARD-DROP)%
+        set qual &&G hard&&0
+      else
+        set qual
+      end
+      %send% %actor% &&0  @%obj%  (level %obj.level%%qual%)
+      set any 1
+    end
+    set obj %obj.next_in_list%
+  done
+  if !%any%
+    %send% %actor%  (no shatterable items found)
+  end
+  halt
+elseif !%target%
   %send% %actor% You don't see that to shatter here.
   halt
-end
-if !%target.carried_by%
+elseif !%target.carried_by%
   %send% %actor% Pick @%target% up first.
   halt
-end
-if !%target.wearable%
+elseif %target.vnum% < 0 || %ban_list% ~= %target.vnum%
+  %send% %actor% You cannot shatter that.
+  halt
+elseif !%target.wearable%
   %send% %actor% @%target% is not an equipment item.
   halt
-end
-if %target.is_flagged(*keep)%
-  %send% %actor% You can not shatter something you are keeping.
+elseif %target.is_flagged(*KEEP)%
+  %send% %actor% You cannot shatter something you are keeping.
+  halt
+elseif %target.is_stolen%
+  %send% %actor% You cannot shatter a stolen item.
   halt
 end
 * 26 ~ 200
@@ -581,7 +645,7 @@ end
 * 301~400: 5103
 * 401~500: 5104
 eval shard_type 5100 + ((%level_modified%-1) / 100)
-eval currency_name %%currency.%shard_type%%%
+eval currency_name %%currency.%shard_type%(%shard_value%)%%
 if !%currency_name% || %currency_name% == UNKNOWN
   %send% %actor% @%target% is too high level to shatter into any current type of shard!
   halt
@@ -591,7 +655,7 @@ if %shard_value% < 1 || %target.quest%
   halt
 end
 %send% %actor% You shatter @%target% into %shard_value% %currency_name%.
-%echoaround% %actor% ~%actor% shatters @%target% into %currency_name%.
+%echoaround% %actor% ~%actor% shatters @%target% into %shard_value% %currency_name%.
 eval money %%actor.give_currency(%shard_type%, %shard_value%)%%
 nop %money%
 %purge% %target%
